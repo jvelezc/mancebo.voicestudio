@@ -44,7 +44,9 @@ from services.fit_planner import FitParams, plan_fit
 from services.watermark import mark_synthetic, mark_synthetic_async, will_mark
 from services import dub_pipeline, dub_resume
 from services.speaker_clone import auto_profile_id
-from services.speaker_similarity import SpeakerSimilarity, source_voice_policy, require_source_reference
+from services.speaker_similarity import (
+    SpeakerSimilarity, SourceReferenceMissingError, source_voice_policy, require_source_reference,
+)
 from api.routers.dub_core import _get_job, _safe_lang_or_400, _save_job
 from services.dub_pipeline import (
     _dub_jobs_lock,
@@ -1805,11 +1807,15 @@ async def dub_generate(job_id: str, req: DubRequest):
                 from core.failure import licence_required_detail
                 licence = licence_required_detail(e)
                 reported = False
-                if licence is None and not task_manager.is_cancelled(task_id):
+                missing_source = isinstance(e, SourceReferenceMissingError)
+                if licence is None and not missing_source and not task_manager.is_cancelled(task_id):
                     reported = diagnostic_reports.capture_failure("dub", error=e)
-                error_detail = stream_generation_failure(e)["detail"]
+                error_detail = (SourceReferenceMissingError.public_message if missing_source
+                                else stream_generation_failure(e)["detail"])
                 logger.exception("Dub generation failed for segment %s", seg_id)
                 error_frame = {'type': 'error', 'segment': i, 'segment_id': seg_id, 'error': error_detail}
+                if missing_source:
+                    error_frame['error_code'] = SourceReferenceMissingError.code
                 if licence is not None:
                     # Keep the expected refusal distinguishable after its
                     # exception has become a persisted task-stream frame.
@@ -2354,10 +2360,16 @@ async def preview_segment(job_id: str, req: SegmentPreviewRequest):
     # Bounded + pool-reset on hang so a wedged preview generate can't starve the
     # GPU pool and brick the backend (#730 class). Length-scaled budget (#1190).
     from services.model_manager import generate_timeout_s
-    audio_tensor = await run_on_gpu_pool_guarded(
-        _gen, what="Dub preview generate",
-        timeout=generate_timeout_s(spoken_text, engine=backend),
-    )
+    try:
+        audio_tensor = await run_on_gpu_pool_guarded(
+            _gen, what="Dub preview generate",
+            timeout=generate_timeout_s(spoken_text, engine=backend),
+        )
+    except SourceReferenceMissingError:
+        raise HTTPException(status_code=400, detail={
+            "code": SourceReferenceMissingError.code,
+            "message": SourceReferenceMissingError.public_message,
+        }) from None
 
     sr = backend.sample_rate
     buf = io.BytesIO()

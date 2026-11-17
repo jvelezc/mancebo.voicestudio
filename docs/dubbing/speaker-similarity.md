@@ -51,6 +51,8 @@ you have permission to reproduce. Original media stays separate from the dub.
 If a requested source match has no local reference file, generation fails with
 instructions to re-analyze, assign a saved voice or switch matching off. It does
 not silently claim to have preserved that speaker using a generic voice.
+The generation stream returns `dub_source_reference_missing` with those recovery
+steps; a preview returns HTTP 400 with the same fixed code and explanation.
 
 ## REST API
 

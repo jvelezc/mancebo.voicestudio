@@ -12,6 +12,19 @@ from pathlib import Path
 SpeakerSimilarity = Literal["consistent", "per_line", "off"]
 
 
+class SourceReferenceMissingError(ValueError):
+    """Expected source-input failure with fixed, safe recovery guidance."""
+
+    code = "dub_source_reference_missing"
+    public_message = (
+        "No usable source voice reference for this speaker. Re-analyze the source "
+        "with speaker detection, assign a saved voice, or turn off Speaker Similarity."
+    )
+
+    def __init__(self):
+        super().__init__(self.public_message)
+
+
 def source_voice_policy(
     profile_id: str | None,
     similarity: SpeakerSimilarity | None,
@@ -40,7 +53,4 @@ def require_source_reference(reference_path: str | None) -> None:
     namespace or a user-assigned library voice.
     """
     if not reference_path or not Path(reference_path).is_file():
-        raise ValueError(
-            "No usable source voice reference for this speaker. Re-analyze the source "
-            "with speaker detection, assign a saved voice, or turn off Speaker Similarity."
-        )
+        raise SourceReferenceMissingError()

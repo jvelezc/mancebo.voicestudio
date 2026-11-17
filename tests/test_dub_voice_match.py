@@ -431,6 +431,37 @@ def test_disabled_similarity_generates_without_source_cloning(patched_generate):
     assert model.refs == [(None, None, True)] * 4
 
 
+@pytest.mark.parametrize('mode', ['consistent', 'per_line'])
+def test_missing_source_match_returns_recovery_without_generating_a_generic_voice(
+    patched_generate, monkeypatch, mode,
+):
+    import json
+    import api.routers.dub_generate as dg
+    events = []
+
+    class RecordingTaskManager:
+        def is_cancelled(self, task_id):
+            return False
+
+        async def add_task(self, task_id, task_type, func, *args, **kwargs):
+            async for frame in func(*args):
+                if frame.startswith('data: '):
+                    events.append(json.loads(frame[6:]))
+
+    monkeypatch.setattr(dg, 'task_manager', RecordingTaskManager())
+    monkeypatch.setattr(dg, 'warn_if_ref_missing', lambda *args, **kwargs: None)
+    body = _heuristic_body()
+    for segment in body['segments']:
+        segment['speaker_similarity'] = mode
+    model = patched_generate(_HEURISTIC_JOB, body)
+    errors = [event for event in events if event.get('type') == 'error']
+    assert model.refs == []
+    assert errors[0]['error_code'] == 'dub_source_reference_missing'
+    assert 'Re-analyze' in errors[0]['error']
+    assert 'saved voice' in errors[0]['error']
+    assert not any(event.get('type') == 'done' for event in events)
+
+
 def test_generated_segment_saves_similarity_and_matching_incremental_fingerprint(
     patched_generate, monkeypatch,
 ):
@@ -481,6 +512,35 @@ def test_preview_uses_the_same_source_policy_as_full_generation(
     assert model.refs[0][0] == generated_reference
     assert result.media_type == 'audio/wav'
     assert result.body.startswith(b'RIFF')
+
+
+@pytest.mark.parametrize('mode', ['consistent', 'per_line'])
+def test_preview_returns_actionable_source_reference_error_before_synthesis(
+    patched_generate, monkeypatch, mode,
+):
+    from fastapi import HTTPException
+    import api.routers.dub_generate as dg
+    body = _heuristic_body()
+    for segment in body['segments']:
+        segment['speaker_similarity'] = 'off'
+    model = patched_generate(_HEURISTIC_JOB, body)
+    model.refs.clear()
+    monkeypatch.setattr(dg, 'warn_if_ref_missing', lambda *args, **kwargs: None)
+
+    async def run_direct(function, **kwargs):
+        return function()
+
+    monkeypatch.setattr(dg, 'run_on_gpu_pool_guarded', run_direct)
+    with pytest.raises(HTTPException) as failure:
+        asyncio.run(dg.preview_segment('jobX', dg.SegmentPreviewRequest(
+            text='Hola', language='es', segment_id='0', profile_id='auto-seg:0',
+            speaker_similarity=mode,
+        )))
+    assert failure.value.status_code == 400
+    assert failure.value.detail['code'] == 'dub_source_reference_missing'
+    assert 'Re-analyze' in failure.value.detail['message']
+    assert 'turn off Speaker Similarity' in failure.value.detail['message']
+    assert model.refs == []
 
 
 def test_per_line_cross_speaker_cast_uses_the_selected_speaker(patched_generate):
