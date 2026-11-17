@@ -2226,6 +2226,22 @@
       "title": "Profile Id",
       "type": "string"
      },
+     "speaker_similarity": {
+      "anyOf": [
+       {
+        "enum": [
+         "consistent",
+         "per_line",
+         "off"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Speaker Similarity"
+     },
      "speed": {
       "anyOf": [
        {
@@ -3865,6 +3881,22 @@
       ],
       "title": "Segment Id"
      },
+     "speaker_similarity": {
+      "anyOf": [
+       {
+        "enum": [
+         "consistent",
+         "per_line",
+         "off"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Speaker Similarity"
+     },
      "speed": {
       "default": 1.0,
       "title": "Speed",
@@ -3873,6 +3905,21 @@
      "text": {
       "title": "Text",
       "type": "string"
+     },
+     "voice_match": {
+      "anyOf": [
+       {
+        "enum": [
+         "per_line",
+         "consistent"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Voice Match"
      }
     },
     "required": [

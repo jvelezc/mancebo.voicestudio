@@ -38,11 +38,13 @@ describe('per-speaker similarity', () => {
         { id: 'a', text: 'Hi', speaker_id: 'Alice', profile_id: 'auto:alice' },
         { id: 'b', text: 'Hi', speaker_id: 'Bob', profile_id: 'saved-bob' },
         { id: 'c', text: 'Hi', speaker_id: 'Alice', speaker_similarity: 'off' },
+        { id: 'd', text: 'Hi', speaker_id: 'Alice', profile_id: 'auto-seg:d' },
       ],
       sources,
     );
     expect(result[0].speaker_similarity).toBe('consistent');
     expect(result[1]).toEqual({ id: 'b', text: 'Hi', speaker_id: 'Bob', profile_id: 'saved-bob' });
     expect(result[2]).toMatchObject({ profile_id: 'auto:alice', speaker_similarity: 'off' });
+    expect(result[3]).toMatchObject({ profile_id: 'auto:alice', speaker_similarity: 'consistent' });
   });
 });

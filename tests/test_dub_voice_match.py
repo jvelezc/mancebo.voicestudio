@@ -431,6 +431,23 @@ def test_disabled_similarity_generates_without_source_cloning(patched_generate):
     assert model.refs == [(None, None, True)] * 4
 
 
+def test_generated_segment_saves_similarity_and_matching_incremental_fingerprint(
+    patched_generate, monkeypatch,
+):
+    import copy
+    import api.routers.dub_generate as dg
+    from services.incremental import segment_fingerprint
+    saved = []
+    monkeypatch.setattr(dg, '_save_job', lambda job_id, job: saved.append(copy.deepcopy(job)))
+    body = _heuristic_body()
+    for segment in body['segments']:
+        segment['speaker_similarity'] = 'off'
+    patched_generate(_HEURISTIC_JOB, body)
+    assert saved[-1]['segments'][0]['speaker_similarity'] == 'off'
+    expected = segment_fingerprint(body['segments'][0], track_lang='es', voice_match='per_line')
+    assert saved[-1]['seg_hashes_by_lang']['es']['0'] == expected
+
+
 @pytest.mark.parametrize('mode,reference', [
     ('consistent', 'spk1.wav'), ('per_line', 'seg0.wav'), ('off', None),
 ])

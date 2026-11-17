@@ -220,7 +220,7 @@ export function applySpeakerCloneDefaults(segments, speakerClones) {
         s.speaker_similarity == null &&
         (s.profile_id === autoProfileId(s.speaker_id) || s.profile_id === `auto-seg:${s.id}`)
       )
-        return { ...s, speaker_similarity: 'consistent' };
+        return { ...s, profile_id: autoProfileId(s.speaker_id), speaker_similarity: 'consistent' };
       return s;
     }
     return {
