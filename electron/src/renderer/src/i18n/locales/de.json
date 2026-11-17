@@ -878,7 +878,16 @@
     "glossary_label": "Glossar",
     "set_speaker": "Sprecher festlegen…",
     "new_speaker": "Neuer Sprecher",
-    "speaker_label": "Sprecher"
+    "speaker_label": "Sprecher",
+    "similarity_title": "Sprecherähnlichkeit",
+    "similarity_for": "Sprecherähnlichkeit für {{speaker}}",
+    "similarity_strategy": "Strategie zur Stimmanpassung",
+    "similarity_help": "Die Originalstimme soll in der Zielsprache erkennbar bleiben. Aussprache und Vortrag vor der Veröffentlichung prüfen.",
+    "similarity_consistent": "Einheitliche Stimme",
+    "similarity_per_line": "Ausdrucksstarker Vortrag",
+    "similarity_off_help": "Die Anpassung an das Original ist aus. Eine zugewiesene Bibliotheksstimme bleibt bestehen.",
+    "similarity_consistent_help": "Für die gesamte Synchronisation dieselbe saubere Sprecherreferenz verwenden. Für eine stabile Stimme empfohlen.",
+    "similarity_per_line_help": "Wenn vorhanden, die saubere Referenz jeder Zeile für deren Ausdruck nutzen; kurze Zeilen verwenden die Sprecherreferenz."
   },
   "dub_workflow": {
     "transcribing_audio": "Audio transkribieren…",

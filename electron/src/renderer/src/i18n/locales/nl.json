@@ -878,7 +878,16 @@
     "glossary_label": "Woordenlijst",
     "set_speaker": "Spreker instellen…",
     "new_speaker": "Nieuwe spreker",
-    "speaker_label": "Spreker"
+    "speaker_label": "Spreker",
+    "similarity_title": "Stemgelijkenis",
+    "similarity_for": "Stemgelijkenis voor {{speaker}}",
+    "similarity_strategy": "Strategie voor stemovereenkomst",
+    "similarity_help": "Houd de oorspronkelijke spreker herkenbaar in de doeltaal. Controleer uitspraak en voordracht voor publicatie.",
+    "similarity_consistent": "Consistente stem",
+    "similarity_per_line": "Expressieve voordracht",
+    "similarity_off_help": "Overeenkomst met de bron staat uit. De toegewezen bibliotheekstem blijft gelden.",
+    "similarity_consistent_help": "Hergebruik één zuivere referentie voor deze spreker tijdens de hele nasynchronisatie. Aanbevolen voor een stabiele stem.",
+    "similarity_per_line_help": "Gebruik waar mogelijk de zuivere referentie van elke regel voor de expressie; korte regels hergebruiken de sprekerreferentie."
   },
   "dub_workflow": {
     "transcribing_audio": "Audio transcriberen…",

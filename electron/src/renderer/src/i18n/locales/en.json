@@ -1121,7 +1121,16 @@
     "glossary_label": "Glossary",
     "set_speaker": "Set speaker…",
     "new_speaker": "New speaker",
-    "speaker_label": "Speaker"
+    "speaker_label": "Speaker",
+    "similarity_title": "Speaker Similarity",
+    "similarity_for": "Speaker Similarity for {{speaker}}",
+    "similarity_strategy": "Voice matching strategy",
+    "similarity_help": "Keep the source speaker recognizable in the target language. Review pronunciation and delivery before publishing.",
+    "similarity_consistent": "Consistent voice",
+    "similarity_per_line": "Expressive delivery",
+    "similarity_off_help": "Source matching is off. Your assigned library voice still applies.",
+    "similarity_consistent_help": "Reuse one clean reference for this speaker throughout the dub. Recommended for a stable voice match.",
+    "similarity_per_line_help": "Use each line’s clean reference when available to follow its expression; short lines reuse this speaker’s reference."
   },
   "dub_workflow": {
     "transcribing_audio": "Transcribing audio…",

@@ -1121,7 +1121,16 @@
     "glossary_label": "Glosario",
     "set_speaker": "Establecer altofalante…",
     "new_speaker": "Novo altofalante",
-    "speaker_label": "Orador"
+    "speaker_label": "Orador",
+    "similarity_title": "Semellanza da voz",
+    "similarity_for": "Semellanza da voz de {{speaker}}",
+    "similarity_strategy": "Estratexia de correspondencia da voz",
+    "similarity_help": "Mantén recoñecible a voz na lingua de destino. Revisa a pronuncia e a interpretación antes de publicar.",
+    "similarity_consistent": "Voz coherente",
+    "similarity_per_line": "Interpretación expresiva",
+    "similarity_off_help": "A correspondencia coa fonte está desactivada. A voz asignada da biblioteca segue en uso.",
+    "similarity_consistent_help": "Reutiliza unha mostra limpa do falante en toda a dobraxe. Recomendado para unha voz estable.",
+    "similarity_per_line_help": "Usa a mostra limpa de cada frase para seguir a súa expresión; as frases curtas reutilizan a mostra do falante."
   },
   "dub_workflow": {
     "transcribing_audio": "Transcribindo o audio…",

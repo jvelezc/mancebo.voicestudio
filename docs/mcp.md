@@ -17,6 +17,12 @@ start once VoiceStudio is open.
 | `transcribe` | audio (base64, or an `audio_path` under the base path) → text (646 languages). |
 | `list_voices` / `list_personalities` / `list_languages` | enumerate what's available. |
 | `check_health` | backend status + active GPU device. |
+| `generate_dub` | Generates a prepared project's translated segments with per-speaker source matching, stable segment IDs and optional partial regeneration. Returns a task ID. |
+| `get_dubbing_task` | Reads persisted status for that task after submission or reconnection. |
+
+See [Speaker Similarity](dubbing/speaker-similarity.md) for the complete UI,
+REST and agent workflow. The controls select actual source references; they
+do not report a measured similarity percentage.
 
 `list_voices`, `list_personalities`, `transcribe`, and `check_health` return
 JSON-encoded text in their MCP tool responses. The `voice://{profile_id}`

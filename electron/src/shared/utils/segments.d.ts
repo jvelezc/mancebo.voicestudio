@@ -1,4 +1,5 @@
 export interface SegmentInput {
+  speaker_similarity?: 'consistent' | 'per_line' | 'off';
   text: string;
   profile_id?: string;
   instruct?: string;
@@ -20,6 +21,11 @@ export function assignSpeakerProfile<T extends SegmentInput>(
   profileId: string,
 ): T[];
 export function castParts(segment: SegmentInput): unknown;
+export function assignSpeakerSimilarity<T extends SegmentInput>(
+  segments: T[],
+  speakerId: string,
+  similarity: NonNullable<SegmentInput['speaker_similarity']>,
+): T[];
 export function castSpeakers(segments: SegmentInput[]): unknown[];
 export function castSourcesFromJob(job: Record<string, unknown>): Record<string, unknown>;
 export function withoutCueSource<T>(segment: T): T;

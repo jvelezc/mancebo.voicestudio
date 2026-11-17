@@ -892,7 +892,16 @@
     "glossary_label": "Słowniczek",
     "set_speaker": "Ustaw mówcę…",
     "new_speaker": "Nowy mówca",
-    "speaker_label": "Mówca"
+    "speaker_label": "Mówca",
+    "similarity_title": "Podobieństwo głosu",
+    "similarity_for": "Podobieństwo głosu: {{speaker}}",
+    "similarity_strategy": "Strategia dopasowania głosu",
+    "similarity_help": "Zachowaj rozpoznawalny głos w języku docelowym. Przed publikacją sprawdź wymowę i sposób mówienia.",
+    "similarity_consistent": "Spójny głos",
+    "similarity_per_line": "Ekspresyjna wypowiedź",
+    "similarity_off_help": "Dopasowanie do źródła jest wyłączone. Przypisany głos z biblioteki nadal obowiązuje.",
+    "similarity_consistent_help": "Używaj jednej czystej próbki tej osoby w całym dubbingu. Zalecane dla stabilnego głosu.",
+    "similarity_per_line_help": "Korzystaj z czystej próbki każdej kwestii, aby oddać jej ekspresję; krótkie kwestie używają próbki danej osoby."
   },
   "dub_workflow": {
     "transcribing_audio": "Transkrypcja dźwięku…",

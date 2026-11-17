@@ -32,6 +32,7 @@ export function segmentGenInputs(s) {
     target_lang: s.target_lang || undefined,
     direction: s.direction || undefined,
     effect_preset: s.effect_preset || undefined,
+    speaker_similarity: s.speaker_similarity || undefined,
   };
 }
 
@@ -140,6 +141,26 @@ export function assignSpeakerProfile(segments, speakerId, profileId) {
   });
 }
 
+/** Per-speaker source reference choice, retained in merge/split attribution. */
+export function assignSpeakerSimilarity(segments, speakerId, similarity) {
+  if (!['consistent', 'per_line', 'off'].includes(similarity)) return segments;
+  return (segments || []).map((segment) => {
+    const matches = segment.speaker_id === speakerId;
+    if (!matches && !castParts(segment).some((part) => part.speaker_id === speakerId))
+      return segment;
+    const update = (part) =>
+      part.speaker_id === speakerId ? { ...part, speaker_similarity: similarity } : part;
+    return {
+      ...segment,
+      ...(matches ? { speaker_similarity: similarity } : {}),
+      ...(segment.merge_parts ? { merge_parts: segment.merge_parts.map(update) } : {}),
+      ...(segment.merge_parts_original
+        ? { merge_parts_original: segment.merge_parts_original.map(update) }
+        : {}),
+    };
+  });
+}
+
 /** Every distinct diarized speaker in cast order — top-level ids first-seen,
  *  including speakers that only survive inside merged rows' `merge_parts`. */
 export function castSpeakers(segments) {
@@ -190,7 +211,22 @@ export function applySpeakerCloneDefaults(segments, speakerClones) {
   const clones = speakerClones && typeof speakerClones === 'object' ? speakerClones : {};
   if (!Array.isArray(segments) || !Object.keys(clones).length) return segments || [];
   return segments.map((s) => {
-    if (!s || s.profile_id || !s.speaker_id || !clones[s.speaker_id]) return s;
-    return { ...s, profile_id: autoProfileId(s.speaker_id) };
+    if (!s || !s.speaker_id || !clones[s.speaker_id]) return s;
+    if (s.profile_id) {
+      // Preparation normally already assigned the automatic source voice.
+      // Only this new analysis path adopts the stable match default; loading
+      // a saved project does not reinterpret its older per-line audio.
+      if (
+        s.speaker_similarity == null &&
+        (s.profile_id === autoProfileId(s.speaker_id) || s.profile_id === `auto-seg:${s.id}`)
+      )
+        return { ...s, speaker_similarity: 'consistent' };
+      return s;
+    }
+    return {
+      ...s,
+      profile_id: autoProfileId(s.speaker_id),
+      speaker_similarity: s.speaker_similarity ?? 'consistent',
+    };
   });
 }

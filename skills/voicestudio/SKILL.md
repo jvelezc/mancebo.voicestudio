@@ -50,6 +50,7 @@ Use the installed OpenAPI schema to discover profile creation, reference uploads
 - Clone only voices the user is authorized to use. Preserve reference files and existing profiles.
 - For design, capture the requested tone, delivery, language, and sample text; check engine support.
 - For dubbing, retain original media, speaker assignments, segment timing, and background-audio intent. Translation completion is not rendered-dub completion.
+- For source speaker matching, follow [Speaker Similarity](../../docs/dubbing/speaker-similarity.md). Start each speaker on `consistent`; `per_line` follows the original line's expression, and `off` removes automatic source cloning. Saved library voices remain explicit overrides. Preview intelligibility and distinct identities before exporting; never report an achieved percentage. Discover `generate_dub` / `get_dubbing_task` at runtime and preserve their task IDs across reconnects.
 - For asynchronous work, use returned job IDs and documented progress/status endpoints. Inspect terminal errors; avoid blindly resubmitting timed-out generation.
 - Return usable files and honest limitations, including missing models or unavailable capabilities.
 

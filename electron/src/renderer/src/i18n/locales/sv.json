@@ -878,7 +878,16 @@
     "glossary_label": "Ordlista",
     "set_speaker": "Ange talare…",
     "new_speaker": "Ny talare",
-    "speaker_label": "Talare"
+    "speaker_label": "Talare",
+    "similarity_title": "Talarlikhet",
+    "similarity_for": "Talarlikhet för {{speaker}}",
+    "similarity_strategy": "Strategi för röstmatchning",
+    "similarity_help": "Behåll en igenkännbar röst på målspråket. Granska uttal och framförande före publicering.",
+    "similarity_consistent": "Konsekvent röst",
+    "similarity_per_line": "Uttrycksfullt framförande",
+    "similarity_off_help": "Matchning mot källan är avstängd. Den tilldelade biblioteksrösten används fortfarande.",
+    "similarity_consistent_help": "Återanvänd en ren referens för talaren genom hela dubbningen. Rekommenderas för en stabil röst.",
+    "similarity_per_line_help": "Använd varje repliks rena referens för dess uttryck när den finns; korta repliker återanvänder talarens referens."
   },
   "dub_workflow": {
     "transcribing_audio": "Transkriberar ljud...",

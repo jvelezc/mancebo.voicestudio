@@ -878,7 +878,16 @@
     "glossary_label": "Bảng thuật ngữ",
     "set_speaker": "Đặt người nói…",
     "new_speaker": "Người nói mới",
-    "speaker_label": "Người nói"
+    "speaker_label": "Người nói",
+    "similarity_title": "Độ giống giọng người nói",
+    "similarity_for": "Độ giống giọng của {{speaker}}",
+    "similarity_strategy": "Cách khớp giọng",
+    "similarity_help": "Giữ giọng người nói dễ nhận ra trong ngôn ngữ đích. Kiểm tra phát âm và cách thể hiện trước khi xuất bản.",
+    "similarity_consistent": "Giọng nhất quán",
+    "similarity_per_line": "Thể hiện giàu cảm xúc",
+    "similarity_off_help": "Đã tắt khớp giọng nguồn. Giọng thư viện đã chọn vẫn được dùng.",
+    "similarity_consistent_help": "Dùng lại một mẫu sạch của người nói xuyên suốt bản lồng tiếng. Khuyên dùng để giữ giọng ổn định.",
+    "similarity_per_line_help": "Dùng mẫu sạch của từng câu nếu có để giữ cách thể hiện; câu ngắn dùng lại mẫu của người nói."
   },
   "dub_workflow": {
     "transcribing_audio": "Phiên âm âm thanh…",

@@ -878,7 +878,16 @@
     "glossary_label": "Glosarium",
     "set_speaker": "Atur pembicara…",
     "new_speaker": "Pembicara baru",
-    "speaker_label": "Pembicara"
+    "speaker_label": "Pembicara",
+    "similarity_title": "Kemiripan pembicara",
+    "similarity_for": "Kemiripan pembicara untuk {{speaker}}",
+    "similarity_strategy": "Strategi pencocokan suara",
+    "similarity_help": "Pertahankan suara pembicara agar dikenali dalam bahasa tujuan. Tinjau pelafalan dan penyampaian sebelum menerbitkan.",
+    "similarity_consistent": "Suara konsisten",
+    "similarity_per_line": "Penyampaian ekspresif",
+    "similarity_off_help": "Pencocokan dengan sumber dinonaktifkan. Suara pustaka yang dipilih tetap berlaku.",
+    "similarity_consistent_help": "Gunakan satu referensi bersih pembicara sepanjang sulih suara. Disarankan untuk suara yang stabil.",
+    "similarity_per_line_help": "Gunakan referensi bersih setiap baris jika tersedia untuk mengikuti ekspresinya; baris pendek menggunakan referensi pembicara."
   },
   "dub_workflow": {
     "transcribing_audio": "Mentranskripsikan audio…",

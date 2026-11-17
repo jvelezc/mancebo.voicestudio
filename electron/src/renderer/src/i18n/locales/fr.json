@@ -880,7 +880,16 @@
     "glossary_label": "Glossaire",
     "set_speaker": "Définir le locuteur…",
     "new_speaker": "Nouveau locuteur",
-    "speaker_label": "Locuteur"
+    "speaker_label": "Locuteur",
+    "similarity_title": "Ressemblance vocale",
+    "similarity_for": "Ressemblance vocale de {{speaker}}",
+    "similarity_strategy": "Stratégie de correspondance vocale",
+    "similarity_help": "Gardez une voix reconnaissable dans la langue cible. Vérifiez la prononciation et l’interprétation avant publication.",
+    "similarity_consistent": "Voix constante",
+    "similarity_per_line": "Interprétation expressive",
+    "similarity_off_help": "La correspondance avec la source est désactivée. La voix de bibliothèque attribuée reste utilisée.",
+    "similarity_consistent_help": "Réutilisez une référence claire de cette personne durant tout le doublage. Recommandé pour une voix stable.",
+    "similarity_per_line_help": "Utilisez la référence claire de chaque réplique pour suivre son expression ; les répliques courtes reprennent la référence de la personne."
   },
   "dub_workflow": {
     "transcribing_audio": "Transcription audio…",

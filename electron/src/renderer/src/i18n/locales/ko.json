@@ -878,7 +878,16 @@
     "timing_concise": "간결하게",
     "timing_stretch_video": "영상 늘이기",
     "timing_strict_slot": "구간 엄수",
-    "upload_transcribe": "업로드 및 전사"
+    "upload_transcribe": "업로드 및 전사",
+    "similarity_title": "화자 음성 유사성",
+    "similarity_for": "{{speaker}}의 음성 유사성",
+    "similarity_strategy": "음성 일치 방식",
+    "similarity_help": "대상 언어에서도 원래 화자를 알아볼 수 있도록 합니다. 게시 전에 발음과 표현을 검토하세요.",
+    "similarity_consistent": "일관된 목소리",
+    "similarity_per_line": "표현력 있는 전달",
+    "similarity_off_help": "원본 음성 일치가 꺼져 있습니다. 지정한 라이브러리 음성은 계속 적용됩니다.",
+    "similarity_consistent_help": "더빙 전체에서 화자의 깨끗한 샘플 하나를 재사용합니다. 안정적인 목소리에 권장합니다.",
+    "similarity_per_line_help": "각 대사의 깨끗한 샘플이 있으면 표현을 반영합니다. 짧은 대사는 화자의 샘플을 재사용합니다."
   },
   "dub_workflow": {
     "transcription_complete": "전사 완료",

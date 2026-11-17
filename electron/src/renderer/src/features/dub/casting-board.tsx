@@ -18,6 +18,10 @@ import { cn } from '@/lib/utils';
 import { PRESETS } from '@shared/utils/constants';
 import { autoProfileId, castParts, castSpeakers } from '@shared/utils/segments';
 import type { DubSegment } from './dub-session';
+import {
+  SpeakerSimilarityControls,
+  type SpeakerSimilarityMode,
+} from './speaker-similarity-controls';
 
 const DEFAULT_VOICE = '__default__';
 
@@ -46,11 +50,15 @@ export function CastingBoard({
   profiles,
   disabled,
   onAssign,
+  onSimilarityChange,
+  voiceMatch = 'per_line',
 }: {
   segments: DubSegment[];
   profiles: Profile[];
   disabled: boolean;
   onAssign: (speaker: string, profileId: string) => void;
+  onSimilarityChange?: (speaker: string, mode: SpeakerSimilarityMode) => void;
+  voiceMatch?: 'consistent' | 'per_line';
 }) {
   const { t } = useTranslation();
   // Automatic speaker matching is already a usable default. Keep the editor
@@ -246,6 +254,22 @@ export function CastingBoard({
                     </SelectGroup>
                   </SelectContent>
                 </Select>
+                {onSimilarityChange &&
+                  (current.startsWith('auto:') || current.startsWith('auto-seg:')) && (
+                    <SpeakerSimilarityControls
+                      speaker={speaker}
+                      disabled={disabled}
+                      mode={
+                        segments.find((segment) => segment.speaker_id === speaker)
+                          ?.speaker_similarity ??
+                        segments
+                          .flatMap((segment) => castParts(segment) as DubSegment[])
+                          .find((part) => part.speaker_id === speaker)?.speaker_similarity ??
+                        voiceMatch
+                      }
+                      onChange={(mode) => onSimilarityChange(speaker, mode)}
+                    />
+                  )}
               </div>
             );
           })}

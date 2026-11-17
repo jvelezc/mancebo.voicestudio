@@ -400,6 +400,72 @@ def test_per_line_auto_binding_still_prefers_segment_clip(patched_generate):
     assert model.refs[0] == ("/v/seg0.wav", "seg0 ref", False)
 
 
+def test_per_speaker_similarity_reaches_the_real_generation_engine(patched_generate, tmp_path):
+    import copy
+    job = copy.deepcopy(_DIARIZED_JOB)
+    for references in [job['speaker_clones'], job['segment_clones']]:
+        for info in references.values():
+            path = tmp_path / os.path.basename(info['ref_audio'])
+            path.write_bytes(b'controlled-reference-fixture')
+            info['ref_audio'] = str(path)
+    body = {
+        'segments': [
+            {'start': 0, 'end': 3, 'text': 'hola', 'profile_id': 'auto:speaker_1',
+             'speaker_similarity': 'consistent'},
+            {'start': 3, 'end': 6, 'text': 'buenas', 'profile_id': 'auto:speaker_2',
+             'speaker_similarity': 'per_line'},
+        ],
+        'segment_ids': ['0', '1'], 'language_code': 'es',
+        'voice_match': 'per_line', 'timing_strategy': 'concise', 'num_step': 4,
+    }
+    model = patched_generate(job, body)
+    assert model.refs == [(str(tmp_path / 'spk1.wav'), 'spk1 ref', True),
+                          (str(tmp_path / 'seg1.wav'), 'seg1 ref', False)]
+
+
+def test_disabled_similarity_generates_without_source_cloning(patched_generate):
+    body = _heuristic_body()
+    for segment in body['segments']:
+        segment['speaker_similarity'] = 'off'
+    model = patched_generate(_HEURISTIC_JOB, body)
+    assert model.refs == [(None, None, True)] * 4
+
+
+@pytest.mark.parametrize('mode,reference', [
+    ('consistent', 'spk1.wav'), ('per_line', 'seg0.wav'), ('off', None),
+])
+def test_preview_uses_the_same_source_policy_as_full_generation(
+    patched_generate, monkeypatch, tmp_path, mode, reference,
+):
+    import copy
+    import api.routers.dub_generate as dg
+    job = copy.deepcopy(_DIARIZED_JOB)
+    for references in [job['speaker_clones'], job['segment_clones']]:
+        for info in references.values():
+            path = tmp_path / os.path.basename(info['ref_audio'])
+            path.write_bytes(b'controlled-reference-fixture')
+            info['ref_audio'] = str(path)
+    segment = {'start': 0, 'end': 3, 'text': 'Hola', 'profile_id': 'auto:speaker_1',
+               'speaker_similarity': mode}
+    model = patched_generate(job, {'segments': [segment], 'segment_ids': ['0'],
+        'language_code': 'es', 'timing_strategy': 'concise', 'num_step': 4})
+    generated_reference = model.refs[0][0]
+    assert generated_reference == (str(tmp_path / reference) if reference else None)
+    model.refs.clear()
+
+    async def run_direct(function, **kwargs):
+        return function()
+
+    monkeypatch.setattr(dg, 'run_on_gpu_pool_guarded', run_direct)
+    result = asyncio.run(dg.preview_segment('jobX', dg.SegmentPreviewRequest(
+        text='Hola', language='es', segment_id='0', profile_id='auto:speaker_1',
+        speaker_similarity=mode,
+    )))
+    assert model.refs[0][0] == generated_reference
+    assert result.media_type == 'audio/wav'
+    assert result.body.startswith(b'RIFF')
+
+
 def test_per_line_cross_speaker_cast_uses_the_selected_speaker(patched_generate):
     """Choosing Speaker 2 on Speaker 1's row must not silently keep that
     row's Speaker 1 segment reference."""

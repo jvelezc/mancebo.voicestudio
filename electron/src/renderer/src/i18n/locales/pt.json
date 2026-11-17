@@ -880,7 +880,16 @@
     "glossary_label": "Glossário",
     "set_speaker": "Definir locutor…",
     "new_speaker": "Novo locutor",
-    "speaker_label": "Locutor"
+    "speaker_label": "Locutor",
+    "similarity_title": "Semelhança do locutor",
+    "similarity_for": "Semelhança do locutor para {{speaker}}",
+    "similarity_strategy": "Estratégia de voz",
+    "similarity_help": "Mantenha o locutor reconhecível no idioma de destino. Revise a pronúncia e a interpretação antes de publicar.",
+    "similarity_consistent": "Voz consistente",
+    "similarity_per_line": "Interpretação expressiva",
+    "similarity_off_help": "A correspondência com o original está desativada. A voz atribuída da biblioteca continua válida.",
+    "similarity_consistent_help": "Reutilize uma referência limpa do locutor em toda a dublagem. Recomendado para uma voz estável.",
+    "similarity_per_line_help": "Use a referência limpa de cada fala para acompanhar a expressão; falas curtas reutilizam a referência do locutor."
   },
   "dub_workflow": {
     "transcribing_audio": "Transcribing audio…",

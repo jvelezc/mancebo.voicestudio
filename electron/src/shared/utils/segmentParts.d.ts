@@ -1,4 +1,5 @@
 export interface SegmentAttribution {
+  speaker_similarity?: 'consistent' | 'per_line' | 'off';
   speaker_id?: string;
   profile_id?: string;
   direction?: string;

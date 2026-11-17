@@ -880,7 +880,16 @@
     "glossary_label": "Glossario",
     "set_speaker": "Imposta parlante…",
     "new_speaker": "Nuovo parlante",
-    "speaker_label": "Parlante"
+    "speaker_label": "Parlante",
+    "similarity_title": "Somiglianza vocale",
+    "similarity_for": "Somiglianza vocale per {{speaker}}",
+    "similarity_strategy": "Strategia di corrispondenza vocale",
+    "similarity_help": "Mantieni riconoscibile la voce originale nella lingua di destinazione. Controlla pronuncia e interpretazione prima di pubblicare.",
+    "similarity_consistent": "Voce coerente",
+    "similarity_per_line": "Interpretazione espressiva",
+    "similarity_off_help": "La corrispondenza con l’originale è disattivata. Resta valida la voce assegnata dalla libreria.",
+    "similarity_consistent_help": "Riutilizza un riferimento pulito del parlante per tutto il doppiaggio. Consigliato per una voce stabile.",
+    "similarity_per_line_help": "Usa il riferimento pulito di ogni battuta per seguirne l’espressione; le battute brevi riutilizzano quello del parlante."
   },
   "dub_workflow": {
     "transcribing_audio": "Trascrizione dell'audio…",

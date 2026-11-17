@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Literal, Optional
 
 from services.audio_dsp import EFFECT_PRESETS
+from services.speaker_similarity import SpeakerSimilarity
 
 class ExportRequest(BaseModel):
     source_filename: str
@@ -22,6 +23,7 @@ class DubSegment(BaseModel):
     text: str
     instruct: str = ""       # Per-segment voice override
     profile_id: str = ""     # Per-segment voice profile
+    speaker_similarity: Optional[SpeakerSimilarity] = None
     speed: Optional[float] = None
     gain: Optional[float] = None  # Per-segment volume (0.0 - 2.0, default 1.0)
     target_lang: Optional[str] = None  # Per-segment language override (ISO code)
