@@ -84,3 +84,19 @@ identity/emotion. Transcript words, speaker identity and translated voice
 similarity are separately verified stages. Model boundaries, CPU/memory/disk
 capacity and the worker deadline remain operational constraints; do not return
 partial output as a complete recording.
+
+## Managed translation with read-only models
+
+Set `VOICESTUDIO_ARGOS_OFFLINE=1` only after installing the selected Argos
+language packs and their Stanza tokenizer resources. This mode initializes
+each translation's tokenizer with `download_method=None`, CPU execution and
+its existing package directory. It neither downloads on customer requests nor
+patches the global Stanza module. Missing/unqualified resources fail the line;
+unchanged source text with an error is not a successful translation. Standalone
+desktop behavior remains unchanged when this setting is absent.
+
+For the managed Python 3.11 image, run the existing
+`core.execstack.ensure_ctranslate2_loadable` repair and import check during
+the image build. Its frozen CTranslate2 4.4 wheel requests an executable stack;
+attempting that repair only at runtime fails on a read-only root filesystem.
+Keep deployed workers read-only rather than weakening their filesystem policy.
