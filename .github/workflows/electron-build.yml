@@ -53,7 +53,7 @@ jobs:
             local_runtime: true
             # New target: report failures without hiding the other legs.
             experimental: true
-          - runner: macos-15
+          - runner: macos-26
             platform: darwin
             arch: arm64
             target: aarch64-apple-darwin

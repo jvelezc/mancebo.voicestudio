@@ -170,7 +170,7 @@ jobs:
             # established targets. check_electron_release_assets.py verifies the
             # arm64 feed only when its manifest was published.
             experimental: true
-          - runner: macos-15
+          - runner: macos-26
             platform: darwin
             arch: arm64
             target: aarch64-apple-darwin
