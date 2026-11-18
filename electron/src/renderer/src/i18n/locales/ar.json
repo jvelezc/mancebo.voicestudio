@@ -906,7 +906,16 @@
     "set_speaker": "تعيين المتحدث…",
     "new_speaker": "متحدث جديد",
     "speaker_label": "المتحدث",
-    "mirror_delivery": "محاكاة أسلوب الإلقاء الأصلي"
+    "mirror_delivery": "محاكاة أسلوب الإلقاء الأصلي",
+    "similarity_title": "تشابه صوت المتحدث",
+    "similarity_for": "تشابه صوت {{speaker}}",
+    "similarity_strategy": "طريقة مطابقة الصوت",
+    "similarity_help": "حافظ على إمكانية التعرّف على صوت المتحدث باللغة المستهدفة. راجع النطق والأداء قبل النشر.",
+    "similarity_consistent": "صوت متّسق",
+    "similarity_per_line": "أداء تعبيري",
+    "similarity_off_help": "مطابقة الصوت الأصلي متوقفة. يبقى صوت المكتبة المعين مستخدمًا.",
+    "similarity_consistent_help": "أعد استخدام عينة نقية واحدة للمتحدث طوال الدبلجة. موصى به لصوت ثابت.",
+    "similarity_per_line_help": "استخدم عينة نقية لكل سطر عند توفرها لمحاكاة أدائه؛ تستخدم الأسطر القصيرة عينة المتحدث."
   },
   "dub_workflow": {
     "transcribing_audio": "جارٍ تحويل الصوت إلى نص…",

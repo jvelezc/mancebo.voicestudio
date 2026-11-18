@@ -33,23 +33,30 @@ beforeEach(() => {
   diagnosticCapture.mockClear();
   preparedCapture.mockClear();
 });
-it.each(['transport', 'too-large'] as const)('does not report local cookie %s validation as an operation failure', async (kind) => {
-  const previous = dubSession.state;
-  const text = vi.fn(async () => 'private fixture cookies');
-  const cookieFile = { size: kind === 'too-large' ? 10_000_000 : 1, text } as unknown as File;
-  cookiePolicy.allowed = kind !== 'transport';
-  vi.mocked(apiJson).mockClear();
-  diagnosticGrant.active = true;
-  try {
-    dubSession.setState((current) => ({ ...current, phase: 'idle', recovery: null }));
-    await ingestDubUrl('https://fixture.invalid/video', cookieFile);
-    expect(dubSession.state.error).toBe(kind === 'too-large' ? 'DUB_COOKIE_TOO_LARGE' : 'DUB_COOKIE_TRANSPORT');
-    expect(diagnosticCapture).not.toHaveBeenCalled();
-    expect(preparedCapture).not.toHaveBeenCalled();
-    expect(text).not.toHaveBeenCalled();
-    expect(apiJson).not.toHaveBeenCalled();
-  } finally { dubSession.setState(() => previous); }
-});
+it.each(['transport', 'too-large'] as const)(
+  'does not report local cookie %s validation as an operation failure',
+  async (kind) => {
+    const previous = dubSession.state;
+    const text = vi.fn(async () => 'private fixture cookies');
+    const cookieFile = { size: kind === 'too-large' ? 10_000_000 : 1, text } as unknown as File;
+    cookiePolicy.allowed = kind !== 'transport';
+    vi.mocked(apiJson).mockClear();
+    diagnosticGrant.active = true;
+    try {
+      dubSession.setState((current) => ({ ...current, phase: 'idle', recovery: null }));
+      await ingestDubUrl('https://fixture.invalid/video', cookieFile);
+      expect(dubSession.state.error).toBe(
+        kind === 'too-large' ? 'DUB_COOKIE_TOO_LARGE' : 'DUB_COOKIE_TRANSPORT',
+      );
+      expect(diagnosticCapture).not.toHaveBeenCalled();
+      expect(preparedCapture).not.toHaveBeenCalled();
+      expect(text).not.toHaveBeenCalled();
+      expect(apiJson).not.toHaveBeenCalled();
+    } finally {
+      dubSession.setState(() => previous);
+    }
+  },
+);
 import {
   applyDubTranslationRows,
   replaceDubSegmentTexts,
@@ -84,6 +91,7 @@ import {
   undoDubEdit,
   nextDubSpeakerId,
   setDubSegmentsSpeaker,
+  setDubSpeakerSimilarity,
 } from './dub-session';
 vi.mock('@/lib/api/client', async (load) => ({
   ...(await load<typeof import('@/lib/api/client')>()),
@@ -389,6 +397,46 @@ it('keeps back-to-back find-and-replace actions as separate undo steps', () => {
     'ACME one',
     'ACME two',
   ]);
+});
+
+it('keeps a per-speaker similarity edit undoable and leaves the other speaker unchanged', () => {
+  const alice = {
+    id: 'a',
+    start: 0,
+    end: 3,
+    text: 'Hello',
+    text_original: 'Hello',
+    speaker_id: 'Alice',
+    profile_id: 'auto:alice',
+    sync_ratio: 1,
+    speaker_similarity: 'consistent' as const,
+  };
+  const bob = {
+    id: 'b',
+    start: 3,
+    end: 6,
+    text: 'Hi',
+    text_original: 'Hi',
+    speaker_id: 'Bob',
+    profile_id: 'auto:bob',
+    sync_ratio: 1,
+    speaker_similarity: 'consistent' as const,
+  };
+  dubSession.setState((current) => ({
+    ...current,
+    phase: 'editing',
+    recovery: null,
+    segments: [alice, bob],
+  }));
+  clearDubEditHistory();
+  setDubSpeakerSimilarity('Alice', 'per_line');
+  expect(dubSession.state.segments[0].speaker_similarity).toBe('per_line');
+  expect(dubSession.state.segments[0].sync_ratio).toBeUndefined();
+  expect(dubSession.state.segments[1]).toBe(bob);
+  undoDubEdit();
+  expect(dubSession.state.segments[0].speaker_similarity).toBe('consistent');
+  redoDubEdit();
+  expect(dubSession.state.segments[0].speaker_similarity).toBe('per_line');
 });
 
 it('supports reversible insert, delete, merge, and split edits without losing speaker attribution', () => {

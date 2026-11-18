@@ -1,5 +1,7 @@
 # Electron dubbing workspace
 
+For per-speaker source voice matching, see the [Speaker Similarity walkthrough](dubbing/speaker-similarity.md).
+
 ![Bundled original and dubbed samples in the default dark theme.](media/electron/dubbing.png)
 
 > **Historical context:** this page was written while the Electron and Tauri apps

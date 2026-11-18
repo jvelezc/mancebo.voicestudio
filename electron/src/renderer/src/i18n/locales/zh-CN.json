@@ -892,7 +892,16 @@
     "translate_all": "翻译所有片段",
     "translating": "正在翻译…",
     "upload_transcribe": "上传并转写",
-    "video_dubbing_studio": "视频配音工作室"
+    "video_dubbing_studio": "视频配音工作室",
+    "similarity_title": "说话人相似度",
+    "similarity_for": "{{speaker}}的声音相似度",
+    "similarity_strategy": "声音匹配方式",
+    "similarity_help": "让目标语言中的声音仍能辨认出原说话人。发布前请检查发音和表达。",
+    "similarity_consistent": "声音一致",
+    "similarity_per_line": "富有表现力",
+    "similarity_off_help": "已关闭原声匹配。已分配的声音库声音仍然有效。",
+    "similarity_consistent_help": "整段配音重复使用该说话人的同一清晰样本。推荐用于保持声音稳定。",
+    "similarity_per_line_help": "有清晰样本时，使用每句原声来保留表达；短句重复使用该说话人的样本。"
   },
   "dub_workflow": {
     "transcribing_audio": "正在转录音频...",

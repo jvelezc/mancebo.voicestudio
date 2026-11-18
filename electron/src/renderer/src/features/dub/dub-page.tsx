@@ -28,6 +28,7 @@ import { SegmentFindBar } from './segment-find-bar';
 import { HighlightedText } from './segment-highlight';
 import { isFindBarTarget, useSegmentFind } from './use-segment-find';
 import { CastingBoard } from './casting-board';
+import { setDubSpeakerSimilarity } from './dub-session';
 import { DubbingDemo } from './dubbing-demo';
 import { CheckpointBanner, type CheckpointStage } from './checkpoint-banner';
 import { ConfirmDialog } from '../clone/confirm-dialog';
@@ -745,6 +746,8 @@ export function DubPage() {
           language: inputs.target_lang || code || target,
           instruct: inputs.instruct || session.instruct || undefined,
           profile_id: inputs.profile_id || undefined,
+          speaker_similarity: inputs.speaker_similarity,
+          voice_match: session.voiceMatch,
           speed: inputs.speed || session.speed || 1,
           duration:
             (session.timingStrategy || 'strict_slot') === 'strict_slot'
@@ -1090,6 +1093,8 @@ export function DubPage() {
             profiles={profiles.data || []}
             disabled={busy || Boolean(session.recovery)}
             onAssign={assignDubSpeakerProfile}
+            onSimilarityChange={setDubSpeakerSimilarity}
+            voiceMatch={session.voiceMatch}
           />
           <details className="group rounded-xl border border-border/40 bg-muted/15 p-3">
             <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium">

@@ -36,7 +36,14 @@
  * would otherwise destroy — fixing only `speaker_id` would leave the same bug
  * wearing a different field's name.
  */
-export const ATTRIBUTION_FIELDS = ['speaker_id', 'profile_id', 'direction', 'gain', 'target_lang'];
+export const ATTRIBUTION_FIELDS = [
+  'speaker_id',
+  'profile_id',
+  'direction',
+  'gain',
+  'target_lang',
+  'speaker_similarity',
+];
 
 /** The attribution carried by a segment, omitting fields it doesn't set. */
 export function attributionOf(seg) {

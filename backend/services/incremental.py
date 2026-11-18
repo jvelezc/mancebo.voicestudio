@@ -88,6 +88,9 @@ def segment_fingerprint(
         payload["track_lang"] = str(track_lang)
     if voice_match and voice_match != "per_line":
         payload["voice_match"] = str(voice_match)
+    # Keep legacy fingerprints byte-identical when the new control is absent.
+    if seg.get("speaker_similarity") is not None:
+        payload["speaker_similarity"] = seg["speaker_similarity"]
     blob = json.dumps(payload, sort_keys=True, ensure_ascii=False)
     return hashlib.sha1(blob.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
 

@@ -878,7 +878,16 @@
     "glossary_label": "用語集",
     "set_speaker": "話者を設定…",
     "new_speaker": "新しい話者",
-    "speaker_label": "話者"
+    "speaker_label": "話者",
+    "similarity_title": "話者の声の類似性",
+    "similarity_for": "{{speaker}}の声の類似性",
+    "similarity_strategy": "声の一致方法",
+    "similarity_help": "翻訳先の言語でも元の話者だと分かる声を目指します。公開前に発音と話し方を確認してください。",
+    "similarity_consistent": "一貫した声",
+    "similarity_per_line": "表情豊かな話し方",
+    "similarity_off_help": "元の声との一致はオフです。割り当てたライブラリの声は引き続き使用します。",
+    "similarity_consistent_help": "吹き替え全体で話者の同じ明瞭なサンプルを使います。声を安定させたい場合におすすめです。",
+    "similarity_per_line_help": "各セリフの明瞭なサンプルがあれば使い、表情を反映します。短いセリフには話者のサンプルを再利用します。"
   },
   "dub_workflow": {
     "transcribing_audio": "音声を文字に起こしています…",

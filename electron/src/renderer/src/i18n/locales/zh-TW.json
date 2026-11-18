@@ -878,7 +878,16 @@
     "glossary_label": "術語表",
     "set_speaker": "設定說話者…",
     "new_speaker": "新說話者",
-    "speaker_label": "說話者"
+    "speaker_label": "說話者",
+    "similarity_title": "說話者相似度",
+    "similarity_for": "{{speaker}}的聲音相似度",
+    "similarity_strategy": "聲音比對方式",
+    "similarity_help": "讓目標語言中的聲音仍能辨認出原說話者。發布前請檢查發音與表達。",
+    "similarity_consistent": "聲音一致",
+    "similarity_per_line": "富有表現力",
+    "similarity_off_help": "已關閉原聲比對。已指派的聲音庫聲音仍然有效。",
+    "similarity_consistent_help": "整段配音重複使用該說話者的同一清晰樣本。建議用於保持聲音穩定。",
+    "similarity_per_line_help": "有清晰樣本時，使用每句原聲來保留表達；短句重複使用該說話者的樣本。"
   },
   "dub_workflow": {
     "transcribing_audio": "正在轉錄音訊...",

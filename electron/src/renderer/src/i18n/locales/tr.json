@@ -878,7 +878,16 @@
     "glossary_label": "Sözlük",
     "set_speaker": "Konuşmacı ata…",
     "new_speaker": "Yeni konuşmacı",
-    "speaker_label": "Konuşmacı"
+    "speaker_label": "Konuşmacı",
+    "similarity_title": "Konuşmacı benzerliği",
+    "similarity_for": "{{speaker}} için konuşmacı benzerliği",
+    "similarity_strategy": "Ses eşleştirme yöntemi",
+    "similarity_help": "Konuşmacıyı hedef dilde tanınabilir tutun. Yayımlamadan önce telaffuzu ve anlatımı kontrol edin.",
+    "similarity_consistent": "Tutarlı ses",
+    "similarity_per_line": "İfadeli anlatım",
+    "similarity_off_help": "Kaynakla eşleştirme kapalı. Atanan kütüphane sesi kullanılmaya devam eder.",
+    "similarity_consistent_help": "Dublaj boyunca konuşmacının tek bir temiz örneğini kullanın. Kararlı bir ses için önerilir.",
+    "similarity_per_line_help": "İfadeyi izlemek için varsa her satırın temiz örneğini kullanın; kısa satırlar konuşmacının örneğini kullanır."
   },
   "dub_workflow": {
     "transcribing_audio": "Ses yazıya aktarılıyor…",

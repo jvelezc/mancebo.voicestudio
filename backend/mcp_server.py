@@ -1261,6 +1261,71 @@ def create_mcp_server(app=None):
             "unmatched": ignored_words,
         })
 
+    @mcp.tool()
+    async def generate_dub(
+        job_id: str,
+        segments: list[dict],
+        language_code: str,
+        segment_ids: list[str] | None = None,
+        regen_only: list[str] | None = None,
+        voice_match: str = "consistent",
+        timing_strategy: str = "smart_fit",
+    ) -> str:
+        """Dub an already prepared/transcribed project into a target language.
+
+        Supply translated segments with start/end/text and the original
+        auto:<speaker> profile_id. Set each segment's speaker_similarity to
+        consistent (recommended stable speaker identity), per_line (source
+        expression), or off (no source clone). Use the same setting for all
+        lines of a speaker. Saved library voices remain explicit overrides.
+        This is a reference strategy, NOT a measured similarity percentage.
+        Review intelligibility, speaker identity and emotion before publishing.
+
+        segment_ids preserve stable line IDs. regen_only reuses unaffected
+        cached lines; never reuse a changed line's old audio. Returns task_id
+        immediately. Poll get_dubbing_task with that id; do not resubmit a
+        running job after a client disconnect. The existing browser/API source
+        upload and transcription steps create job_id; this tool does not upload
+        local paths or grant additional permissions.
+        """
+        import httpx
+        from schemas.requests import DubRequest
+        try:
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,160}", job_id):
+                raise ValueError("Use the source project job id returned by the API.")
+            request = DubRequest(
+                segments=segments, language=language_code, language_code=language_code,
+                segment_ids=segment_ids, regen_only=regen_only,
+                voice_match=voice_match, timing_strategy=timing_strategy,
+            )
+            # Keep job IDs in one path segment; no caller-provided API routes.
+            from urllib.parse import quote
+            result = await _submit_json(
+                f"/dub/generate/{quote(job_id, safe='')}", request.model_dump(mode="json"),
+            )
+            return json.dumps(result)
+        except (httpx.HTTPError, ValueError) as request_error:
+            return _request_failure(request_error)
+
+    @mcp.tool()
+    async def get_dubbing_task(task_id: str) -> str:
+        """Read persisted task status after generate_dub, including after reconnect.
+
+        Pass the returned task_id, not the source project id. Completion is a
+        persisted done state, not successful submission. Use the project's
+        authenticated export/download actions after completion. Never claim a
+        private output URL is public or attach the server's filesystem paths.
+        """
+        import httpx
+        from urllib.parse import quote
+        try:
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,160}", task_id):
+                raise ValueError("Use the task_id returned by generate_dub.")
+            result = await _api_get(f"/jobs/{quote(task_id, safe='')}")
+            return json.dumps(_scrubbed(result))
+        except (httpx.HTTPError, ValueError) as request_error:
+            return _request_failure(request_error)
+
     return mcp
 
 

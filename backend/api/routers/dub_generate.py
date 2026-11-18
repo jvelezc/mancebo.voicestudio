@@ -44,6 +44,9 @@ from services.fit_planner import FitParams, plan_fit
 from services.watermark import mark_synthetic, mark_synthetic_async, will_mark
 from services import dub_pipeline, dub_resume
 from services.speaker_clone import auto_profile_id
+from services.speaker_similarity import (
+    SpeakerSimilarity, SourceReferenceMissingError, source_voice_policy, require_source_reference,
+)
 from api.routers.dub_core import _get_job, _safe_lang_or_400, _save_job
 from services.dub_pipeline import (
     _dub_jobs_lock,
@@ -216,6 +219,7 @@ def _sync_job_segments(job: dict, req: DubRequest) -> None:
         row["start"] = seg.start
         row["end"] = seg.end
         row["text"] = seg.text
+        row["speaker_similarity"] = seg.speaker_similarity
         # Imported cue markup is reused only when the client vouches this is
         # still that import's text, never because the text happens to match.
         vouched.append(vouch_cue_source(row, seg.text, seg.cue_source_id))
@@ -796,6 +800,10 @@ async def dub_generate(job_id: str, req: DubRequest):
         # "consistent" pick once per speaker and hands the SAME reference to
         # every segment of that speaker for the whole run.
         voice_match = (req.voice_match or "per_line").lower()
+        similarity_by_segment = {
+            str(seg_ids[i] if i < len(seg_ids) else f"seg_{i}"): segment.speaker_similarity
+            for i, segment in enumerate(req.segments)
+        }
         _consistent_ref_memo: dict = {}
         # Strategy-transition guard: concise, stretch_video and smart_fit all
         # re-mix *natural-rate* per-segment WAVs. If the previous run used
@@ -1036,6 +1044,7 @@ async def dub_generate(job_id: str, req: DubRequest):
                 "speed": segment.speed,
                 "direction": segment.direction,
                 "effect_preset": segment.effect_preset,
+                "speaker_similarity": segment.speaker_similarity,
             }, track_lang=lang_code, voice_match=voice_match)
 
         for i, seg in enumerate(req.segments):
@@ -1153,6 +1162,13 @@ async def dub_generate(job_id: str, req: DubRequest):
                 # Callers pass this render's once-prepared speech, including
                 # native-batch preparation and OOM retries.
                 effective_seg_id = seg_id if current_seg_id is None else current_seg_id
+                explicit_source_match = (
+                    similarity_by_segment.get(str(effective_seg_id)) in ("consistent", "per_line")
+                    and bool(profile_id and profile_id.startswith(("auto:", "auto-seg:")))
+                )
+                profile_id, segment_voice_match = source_voice_policy(
+                    profile_id, similarity_by_segment.get(str(effective_seg_id)), voice_match,
+                )
                 ref_audio = None
                 ref_text = None
                 used_seed = None
@@ -1183,7 +1199,7 @@ async def dub_generate(job_id: str, req: DubRequest):
                     # CROSS binding (sid != this segment) can only come from an
                     # explicit request — honour its clip unchanged.
                     _consistent_alt = None
-                    if voice_match == "consistent" and sid == str(effective_seg_id):
+                    if segment_voice_match == "consistent" and sid == str(effective_seg_id):
                         _spk_key = _speaker_key_for_segment(job, sid)
                         if _spk_key:
                             _consistent_alt = resolve_consistent_ref(
@@ -1202,7 +1218,7 @@ async def dub_generate(job_id: str, req: DubRequest):
 
                 elif profile_id and profile_id.startswith("auto:"):
                     key = profile_id[len("auto:"):]
-                    if voice_match == "consistent":
+                    if segment_voice_match == "consistent":
                         # ONE reference per speaker for the whole dub: the
                         # pooled per-speaker clone, else the deterministic
                         # segment-clip pick (heuristic-diarized jobs have no
@@ -1297,6 +1313,8 @@ async def dub_generate(job_id: str, req: DubRequest):
                 ref_audio = voice_lease.hold(warn_if_ref_missing(
                     ref_audio, job_id=job_id, seg_id=effective_seg_id, where="dub render",
                 ))
+                if explicit_source_match:
+                    require_source_reference(ref_audio)
 
                 if prepare_only:
                     return {
@@ -1789,11 +1807,15 @@ async def dub_generate(job_id: str, req: DubRequest):
                 from core.failure import licence_required_detail
                 licence = licence_required_detail(e)
                 reported = False
-                if licence is None and not task_manager.is_cancelled(task_id):
+                missing_source = isinstance(e, SourceReferenceMissingError)
+                if licence is None and not missing_source and not task_manager.is_cancelled(task_id):
                     reported = diagnostic_reports.capture_failure("dub", error=e)
-                error_detail = stream_generation_failure(e)["detail"]
+                error_detail = (SourceReferenceMissingError.public_message if missing_source
+                                else stream_generation_failure(e)["detail"])
                 logger.exception("Dub generation failed for segment %s", seg_id)
                 error_frame = {'type': 'error', 'segment': i, 'segment_id': seg_id, 'error': error_detail}
+                if missing_source:
+                    error_frame['error_code'] = SourceReferenceMissingError.code
                 if licence is not None:
                     # Keep the expected refusal distinguishable after its
                     # exception has become a persisted task-stream frame.
@@ -2199,7 +2221,7 @@ async def dub_generate(job_id: str, req: DubRequest):
 # and wants to hear the result immediately.
 
 from pydantic import BaseModel
-from typing import Optional
+from typing import Literal, Optional
 from fastapi.responses import Response
 import io
 
@@ -2214,6 +2236,8 @@ class SegmentPreviewRequest(BaseModel):
     language: str = "Auto"
     instruct: Optional[str] = None
     profile_id: Optional[str] = None
+    speaker_similarity: Optional[SpeakerSimilarity] = None
+    voice_match: Optional[Literal["per_line", "consistent"]] = None
     speed: float = 1.0
     duration: Optional[float] = None
 
@@ -2254,12 +2278,26 @@ async def preview_segment(job_id: str, req: SegmentPreviewRequest):
         ref_text = None
 
         # Resolve profile / auto-clone
-        pid = req.profile_id
+        pid, preview_voice_match = source_voice_policy(
+            req.profile_id, req.speaker_similarity, req.voice_match,
+        )
+        if pid and pid.startswith("auto-seg:"):
+            source_id = pid[len("auto-seg:"):]
+            key = _speaker_key_for_segment(job, source_id)
+            info = (
+                resolve_consistent_ref(job, key)
+                if preview_voice_match == "consistent" and source_id == req.segment_id and key
+                else (job.get("segment_clones") or {}).get(source_id)
+            )
+            if info:
+                ref_audio, ref_text = info.get("ref_audio"), info.get("ref_text")
+            pid = None
         if pid and pid.startswith("auto:"):
             key = pid[len("auto:"):]
             info = None
             if (
                 req.segment_id is not None
+                and preview_voice_match != "consistent"
                 and _speaker_key_for_segment(job, req.segment_id) == key
             ):
                 info = (job.get("segment_clones") or {}).get(str(req.segment_id))
@@ -2290,6 +2328,11 @@ async def preview_segment(job_id: str, req: SegmentPreviewRequest):
             ref_audio, job_id=job_id,
             seg_id=req.segment_id or "preview", where="dub preview",
         )
+        if (
+            req.speaker_similarity in ("consistent", "per_line")
+            and req.profile_id and req.profile_id.startswith(("auto:", "auto-seg:"))
+        ):
+            require_source_reference(ref_audio)
         # Apply the same normalization/dictionary/inline ordering as a full
         # render, with the preview's selected language and saved voice.
         audio_out = backend.generate(
@@ -2317,10 +2360,16 @@ async def preview_segment(job_id: str, req: SegmentPreviewRequest):
     # Bounded + pool-reset on hang so a wedged preview generate can't starve the
     # GPU pool and brick the backend (#730 class). Length-scaled budget (#1190).
     from services.model_manager import generate_timeout_s
-    audio_tensor = await run_on_gpu_pool_guarded(
-        _gen, what="Dub preview generate",
-        timeout=generate_timeout_s(spoken_text, engine=backend),
-    )
+    try:
+        audio_tensor = await run_on_gpu_pool_guarded(
+            _gen, what="Dub preview generate",
+            timeout=generate_timeout_s(spoken_text, engine=backend),
+        )
+    except SourceReferenceMissingError:
+        raise HTTPException(status_code=400, detail={
+            "code": SourceReferenceMissingError.code,
+            "message": SourceReferenceMissingError.public_message,
+        }) from None
 
     sr = backend.sample_rate
     buf = io.BytesIO()

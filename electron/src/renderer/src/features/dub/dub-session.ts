@@ -35,6 +35,7 @@ import { consumeTaskStream, type TaskEvent } from '@/lib/api/event-stream';
 import { publicFailureFromEvent, type PublicFailure } from '@/lib/api/failure';
 import {
   assignSpeakerProfile,
+  assignSpeakerSimilarity,
   applySpeakerCloneDefaults,
   autoProfileId,
   castParts,
@@ -78,6 +79,7 @@ export interface DubSegment {
   text: string;
   text_original: string;
   speaker_id?: string;
+  speaker_similarity?: 'consistent' | 'per_line' | 'off';
   profile_id?: string;
   instruct?: string;
   target_lang?: string;
@@ -614,6 +616,24 @@ export function assignDubSpeakerProfile(speakerId: string, profileId: string) {
     return invalidated;
   });
   if (changed) commitSegmentEdit(next);
+}
+
+/** Change this speaker's source reference strategy and invalidate their audio. */
+export function setDubSpeakerSimilarity(
+  speakerId: string,
+  similarity: NonNullable<DubSegment['speaker_similarity']>,
+) {
+  const current = dubSession.state.segments;
+  const assigned = assignSpeakerSimilarity(current, speakerId, similarity) as DubSegment[];
+  if (assigned === current) return;
+  const next = assigned.map((segment, index) => {
+    if (segment === current[index]) return segment;
+    const invalidated = invalidateQc(segment);
+    delete invalidated.sync_ratio;
+    delete invalidated.fit_status;
+    return invalidated;
+  });
+  if (next.some((segment, index) => segment !== current[index])) commitSegmentEdit(next);
 }
 
 /** The next unused `Speaker N` label, matching the backend's default

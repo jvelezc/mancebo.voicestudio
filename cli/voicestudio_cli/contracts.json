@@ -648,8 +648,10 @@
       "language",
       "profile_id",
       "segment_id",
+      "speaker_similarity",
       "speed",
-      "text"
+      "text",
+      "voice_match"
     ],
     "query": [],
     "required": [
