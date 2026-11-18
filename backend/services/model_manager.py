@@ -4736,7 +4736,15 @@ def get_diarization_pipeline(return_error: bool = False):
     a docs deeplink — issue #78.
     """
     global _diar_pipeline
-    from services.diarization_runtime import SORTFORMER, selected_backend
+    from services.diarization_runtime import SPEECHBRAIN, SORTFORMER, selected_backend
+    if selected_backend() == SPEECHBRAIN:
+        try:
+            from services.diarization_speechbrain import SpeechBrainDiarization
+            pipeline = SpeechBrainDiarization()
+            return (pipeline, None) if return_error else pipeline
+        except Exception as exc:
+            logger.error("Could not prepare installed SpeechBrain speaker analysis (class=%s)", type(exc).__name__)
+            return (None, _classify_diarization_error(exc)) if return_error else None
     if selected_backend() == SORTFORMER:
         try:
             from services.diarization_native import NativeSortformer
@@ -4747,10 +4755,10 @@ def get_diarization_pipeline(return_error: bool = False):
             return (None, _classify_diarization_error(exc)) if return_error else None
     from core.windows_rocm.pipelines import pipeline_error, prepare_audio_imports
 
-    if reason := pipeline_error():
-        logger.warning("Speaker diarization unavailable: %s", reason)
-        return (None, DIARIZATION_ERR_LOAD) if return_error else None
     if _diar_pipeline is not None:
+        if reason := pipeline_error():
+            logger.warning("Speaker diarization unavailable: %s", reason)
+            return (None, DIARIZATION_ERR_LOAD) if return_error else None
         return (_diar_pipeline, None) if return_error else _diar_pipeline
 
     # Phase 1 AUTH-01: 3-source resolver (App → Env → HF-CLI). Per
@@ -4763,25 +4771,31 @@ def get_diarization_pipeline(return_error: bool = False):
     from services.hf_auth import token_for_endpoint
     hf_token = token_for_endpoint(None, resolved.token) if resolved else False
     try:
-        torch = _lazy_torch()
-        _ensure_pyannote_hf_token_compat()  # #167: use_auth_token -> token
-        # PyTorch 2.6 flipped torch.load's default to weights_only=True, whose
-        # secure unpickler rejects the pyannote checkpoint's metadata globals
-        # (torch_version.TorchVersion, omegaconf nodes, …) — surfacing as
-        # "Weights only load failed / Unsupported global" and breaking
-        # diarization on torch>=2.6 even after the license is accepted (#270).
-        # Reuse the exact allowlist the WhisperX VAD load registers so the
-        # secure load path succeeds; it is idempotent and per-process.
-        try:
-            from services.asr_backend import WhisperXBackend
-            WhisperXBackend._allow_vad_pickle_globals()
-        except Exception as _glob_e:
-            logger.debug("pyannote safe-globals allowlist skipped: %s", _glob_e)
-        prepare_audio_imports()
-        from pyannote.audio import Pipeline
-        logger.info("Loading Pyannote Diarization Pipeline...")
+        # Verify the installed-only bundle before importing optional inference
+        # stacks. A missing model must not be misreported as a torchvision or
+        # accelerator failure merely because another engine ran first.
         from services.diarization_local import local_pipeline_config
         with local_pipeline_config() as config_path:
+            if reason := pipeline_error():
+                logger.warning("Speaker diarization unavailable: %s", reason)
+                return (None, DIARIZATION_ERR_LOAD) if return_error else None
+            torch = _lazy_torch()
+            _ensure_pyannote_hf_token_compat()  # #167: use_auth_token -> token
+            # PyTorch 2.6 flipped torch.load's default to weights_only=True, whose
+            # secure unpickler rejects the pyannote checkpoint's metadata globals
+            # (torch_version.TorchVersion, omegaconf nodes, …) — surfacing as
+            # "Weights only load failed / Unsupported global" and breaking
+            # diarization on torch>=2.6 even after the license is accepted (#270).
+            # Reuse the exact allowlist the WhisperX VAD load registers so the
+            # secure load path succeeds; it is idempotent and per-process.
+            try:
+                from services.asr_backend import WhisperXBackend
+                WhisperXBackend._allow_vad_pickle_globals()
+            except Exception as _glob_e:
+                logger.debug("pyannote safe-globals allowlist skipped: %s", _glob_e)
+            prepare_audio_imports()
+            from pyannote.audio import Pipeline
+            logger.info("Loading Pyannote Diarization Pipeline...")
             pipeline = Pipeline.from_pretrained(config_path, use_auth_token=hf_token)
         if pipeline is None:
             raise RuntimeError("The installed diarisation pipeline could not be loaded")

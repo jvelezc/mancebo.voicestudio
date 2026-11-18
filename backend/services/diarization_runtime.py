@@ -8,6 +8,7 @@ from core import prefs
 
 PYANNOTE = "pyannote"
 SORTFORMER = "audiocpp-sortformer"
+SPEECHBRAIN = "speechbrain-ecapa"
 SORTFORMER_REPO = "audio-cpp/audio.cpp-gguf"
 SORTFORMER_FILE = "Sortformer-Diar-4spk-v1-GGUF/sortformer-diar-4spk-v1-q8_0.gguf"
 
@@ -29,7 +30,14 @@ def selected_backend() -> str:
             default=PYANNOTE,
         )
     ).strip()
-    return value if value in {PYANNOTE, SORTFORMER} else PYANNOTE
+    return value if value in {PYANNOTE, SORTFORMER, SPEECHBRAIN} else PYANNOTE
+
+
+def selected_model_id() -> str:
+    selected = selected_backend()
+    if selected == SPEECHBRAIN:
+        return "speechbrain/spkrec-ecapa-voxceleb"
+    return SORTFORMER_REPO if selected == SORTFORMER else "pyannote/speaker-diarization-3.1"
 
 
 def sortformer_model_path() -> Path:
@@ -65,6 +73,10 @@ def selected_model_repos() -> list[str]:
     A user-configured Sortformer GGUF (``OMNIVOICE_DIARIZATION_MODEL``) is a
     local asset with no registry identity, so it names no repo.
     """
+    if selected_backend() == SPEECHBRAIN:
+        # Explicit local model assets have operator-recorded provenance and
+        # never trigger a registry download or gate an unrelated HF model.
+        return []
     if selected_backend() == SORTFORMER:
         if os.environ.get("OMNIVOICE_DIARIZATION_MODEL", "").strip():
             return []
@@ -80,7 +92,7 @@ def ensure_selected_accepted() -> None:
 
 
 def select_backend(backend: str) -> None:
-    if backend not in {PYANNOTE, SORTFORMER}:
+    if backend not in {PYANNOTE, SORTFORMER, SPEECHBRAIN}:
         raise ValueError("Unknown diarisation engine")
     prefs.set_("diarization_backend", backend)
 
@@ -128,6 +140,9 @@ def sortformer_status() -> dict:
 def installed_backends() -> set[str]:
     """Return complete local runtimes without loading weights or downloading."""
     installed: set[str] = set()
+    from services.diarization_speechbrain import status as speechbrain_status
+    if speechbrain_status()["installed"]:
+        installed.add(SPEECHBRAIN)
     from api.routers.setup.models import KNOWN_MODELS, cache_is_complete, is_cached
 
     repo_id = "pyannote/speaker-diarization-3.1"
