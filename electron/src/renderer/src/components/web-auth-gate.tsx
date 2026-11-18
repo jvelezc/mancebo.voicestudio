@@ -6,10 +6,20 @@ import { absoluteApiBase, ApiError, apiFetch } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { studioMode } from '@/lib/managed-studio';
+import { ManagedStudioGate } from './managed-studio-gate';
 
 type AuthMode = 'apikey' | 'pin';
 
 export function WebAuthGate({ children }: { children: ReactNode }) {
+  return studioMode().kind === 'standalone' ? (
+    <StandaloneWebAuthGate>{children}</StandaloneWebAuthGate>
+  ) : (
+    <ManagedStudioGate>{children}</ManagedStudioGate>
+  );
+}
+
+function StandaloneWebAuthGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [checked, setChecked] = useState(!__WEB_DEPLOYMENT__);
   const [mode, setMode] = useState<AuthMode | null>(null);

@@ -4345,5 +4345,14 @@
     "unavailable": "Os informes automáticos non están dispoñibles ou están desactivados nesta aplicación.",
     "managed": "Xestiona esta opción na aplicación de escritorio conectada a este navegador.",
     "save_failed": "Non se puido gardar esta opción. Téntao de novo."
+  },
+  "managedStudio": {
+    "studioTitle": "Estudio de voz",
+    "sessionExpired": "A sesión do estudio rematou. Conéctate de novo desde o teu espazo de Mancebo.",
+    "unavailable": "Non se puido abrir o estudio de voz. Téntao de novo ou volve a Mancebo.",
+    "openWorkspace": "Abrir o meu espazo de Mancebo",
+    "retry": "Tentar de novo",
+    "productName": "Mancebo.ai",
+    "sourceCode": "Código fonte"
   }
 }
