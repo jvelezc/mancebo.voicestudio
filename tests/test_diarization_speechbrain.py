@@ -209,3 +209,46 @@ def test_missing_default_bundle_is_reported_before_optional_runtime_imports(
     )
     pipeline, error = manager.get_diarization_pipeline(return_error=True)
     assert pipeline is None and error == manager.DIARIZATION_ERR_NO_TOKEN
+
+
+def test_reviewed_encoder_has_explicit_audio_configuration_and_safe_cpu_tensor_load(
+    installed, monkeypatch
+):
+    calls = []
+
+    class Encoder:
+        def __init__(self, *, modules, hparams, run_opts):
+            calls.append((set(modules), hparams, run_opts))
+            assert hparams == {"sample_rate": 16000}
+
+        def eval(self):
+            return self
+
+    class Model:
+        def __init__(self, **kwargs):
+            pass
+
+        def load_state_dict(self, value):
+            assert value == {"reviewed": "tensor-state"}
+
+    def load(path, **kwargs):
+        assert path == installed / "embedding_model.ckpt"
+        assert kwargs == {"map_location": "cpu", "weights_only": True}
+        return {"reviewed": "tensor-state"}
+
+    monkeypatch.setattr("speechbrain.inference.classifiers.EncoderClassifier", Encoder)
+    monkeypatch.setattr("speechbrain.lobes.models.ECAPA_TDNN.ECAPA_TDNN", Model)
+    monkeypatch.setattr("speechbrain.lobes.features.Fbank", lambda **kwargs: object())
+    monkeypatch.setattr(
+        "speechbrain.processing.features.InputNormalization", lambda **kwargs: object()
+    )
+    monkeypatch.setattr(torch, "load", load)
+    model = subject.SpeechBrainDiarization()
+    assert isinstance(model._encoder(), Encoder)
+    assert calls == [
+        (
+            {"compute_features", "mean_var_norm", "embedding_model"},
+            {"sample_rate": 16000},
+            {"device": "cpu"},
+        )
+    ]

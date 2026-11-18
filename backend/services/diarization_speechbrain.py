@@ -233,6 +233,7 @@ class SpeechBrainDiarization:
                 ),
                 "embedding_model": model,
             },
+            hparams={"sample_rate": RATE},
             run_opts={"device": "cpu"},
         )
         self.encoder.eval()
