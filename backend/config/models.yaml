@@ -79,6 +79,20 @@ models:
       - "DotTTS-SOAR-GGUF/dots-tts-soar-q8_0.gguf"
     note: "dots.tts on the native audio.cpp runtime, including Windows. Apache-2.0 weights."
 
+  - id: "audio-cpp/audio.cpp-gguf:qwen3-native-q8_0"
+    repo_id: "audio-cpp/audio.cpp-gguf"
+    label: "Qwen3 TTS native (Base cloning + VoiceDesign, Q8_0)"
+    role: TTS
+    engines: [qwen3-native]
+    size_gb: 4.48
+    required_files:
+      - "Qwen3-TTS-12Hz-0.6B-Base-GGUF/qwen3-tts-12hz-0.6b-base-q8_0.gguf"
+      - "Qwen3-TTS-12Hz-1.7B-VoiceDesign-GGUF/qwen3-tts-12hz-1.7b-voicedesign-q8_0.gguf"
+    allow_patterns:
+      - "Qwen3-TTS-12Hz-0.6B-Base-GGUF/qwen3-tts-12hz-0.6b-base-q8_0.gguf"
+      - "Qwen3-TTS-12Hz-1.7B-VoiceDesign-GGUF/qwen3-tts-12hz-1.7b-voicedesign-q8_0.gguf"
+    note: "Optional native CPU cloning and voice design in ten languages. Both packages are required. Review the model license records before installation. No Qwen Python stack or GPU is required."
+
   # ── ASR (optional — curated per platform) ─────────────────────────────
   # No ASR model is required to boot: TTS-only installs work. Dubbing,
   # dictation, and clone-reference transcription prompt for the curated

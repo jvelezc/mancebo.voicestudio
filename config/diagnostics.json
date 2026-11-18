@@ -167,6 +167,7 @@
     "pockettts",
     "pytorch-whisper",
     "qwen3-tts",
+    "qwen3-native",
     "sherpa-onnx",
     "sherpa-onnx-asr",
     "supertonic3",

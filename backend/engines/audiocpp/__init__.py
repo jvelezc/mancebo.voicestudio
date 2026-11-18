@@ -318,6 +318,10 @@ class AudioCPPBackend(TTSBackend):
     def _base_url(self) -> str:
         return f"http://127.0.0.1:{self._port}"
 
+    def _server_configuration(self, **kwargs) -> dict:
+        """Engine-specific configuration without changing shared process ownership."""
+        return build_server_config(**kwargs)
+
     def _ensure_loaded(self) -> None:
         """Spawn the server (once) and wait for ``/health``. Idempotent."""
         with self._lock:
@@ -336,7 +340,7 @@ class AudioCPPBackend(TTSBackend):
             # /v1/models to prove this is the child configured by this process,
             # not an unrelated listener that pre-bound the loopback port.
             self._server_model_id = f"{package.model_id}-{secrets.token_hex(16)}"
-            config = build_server_config(
+            config = self._server_configuration(
                 model_id=self._server_model_id,
                 family=package.family,
                 model_path=str(model_file),
