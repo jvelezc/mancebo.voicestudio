@@ -116,3 +116,8 @@ The managed adapters also share a generation/handoff lock and reap the previous
 adapter's owned model process before loading another. Separate registry and
 prewarm instances must not keep multiple models resident inside an 8 GiB worker.
 Handoff waits for active generation; it does not interrupt it to reclaim memory.
+
+Managed workers also set `VOICESTUDIO_PRESERVE_FULL_VIDEO=1`. Download and
+preview muxes retain the source's silent video tail instead of ending at the
+shorter speech track. Managed preview cache names are separate so an old trimmed
+preview cannot be reused. Standalone mux behavior is unchanged without opt-in.
