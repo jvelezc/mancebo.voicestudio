@@ -7,6 +7,7 @@ switching between design and cloning reaps that server before loading the other.
 from __future__ import annotations
 
 import os
+import socket
 
 from engines.audiocpp import AudioCPPBackend, bootstrap
 from services.tts_backend import TTSInputError
@@ -80,6 +81,23 @@ class QwenNativeBackend(AudioCPPBackend):
 
     def _package(self):
         return self._selected_package
+
+    def _select_server_port(self, package) -> int:
+        if os.environ.get("VOICESTUDIO_QWEN_NATIVE_DYNAMIC_PORT") != "1":
+            return super()._select_server_port(package)
+        # Different model instances can coexist during a model-manager handoff.
+        # Never terminate a listener merely because it holds the configured port.
+        # The inherited per-launch identity challenge still checks ownership if
+        # another process wins the small bind-to-spawn race.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.bind(("127.0.0.1", 0))
+            return listener.getsockname()[1]
+
+    def _runtime_directory(self, package):
+        directory = super()._runtime_directory(package)
+        if os.environ.get("VOICESTUDIO_QWEN_NATIVE_DYNAMIC_PORT") == "1":
+            return directory / "launches" / self._server_model_id
+        return directory
 
     def _server_configuration(self, **kwargs) -> dict:
         config = super()._server_configuration(**kwargs)

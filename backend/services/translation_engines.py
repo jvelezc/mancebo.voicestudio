@@ -427,9 +427,16 @@ def translate_argos(text: str, source: str, target: str) -> str:
     Configure each selected translation object, not the global Stanza module.
     Missing resources fail rather than downloading on a customer request.
     """
+    managed = os.environ.get("VOICESTUDIO_ARGOS_OFFLINE") == "1"
+    if managed:
+        # Argos INFO diagnostics include source sentences and translated output.
+        # Managed workers retain warning/error signals without logging scripts.
+        import logging
+
+        logging.getLogger("argostranslate.utils").setLevel(logging.WARNING)
     import argostranslate.translate as runtime
 
-    if os.environ.get("VOICESTUDIO_ARGOS_OFFLINE") != "1":
+    if not managed:
         return runtime.translate(text, source, target)
     if source == target:
         return text

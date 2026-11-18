@@ -1,4 +1,5 @@
 import sys
+import logging
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
@@ -62,3 +63,30 @@ def test_missing_installed_tokenizer_fails_without_untranslated_success(monkeypa
     with pytest.raises(RuntimeError, match="not qualified"):
         subject.translate_argos("Must not silently pass through", "en", "es")
     assert calls == []
+
+
+def test_managed_translation_does_not_log_scripts_but_retains_warnings(monkeypatch, runtime, caplog):
+    _, _, wrapped = runtime
+    monkeypatch.setenv("VOICESTUDIO_ARGOS_OFFLINE", "1")
+    log = logging.getLogger("argostranslate.utils")
+    monkeypatch.setattr(log, "level", logging.INFO)
+
+    def translate(text):
+        log.info("Source sentence: %s", text)
+        log.info("Translated sentence: confidential translation")
+        log.warning("Installed translation needs review")
+        return "translated result"
+
+    wrapped.translate = translate
+    with caplog.at_level(logging.INFO):
+        assert subject.translate_argos("confidential source", "en", "es") == "translated result"
+    assert "confidential" not in caplog.text
+    assert "Installed translation needs review" in caplog.text
+
+
+def test_standalone_translation_does_not_change_library_logging(monkeypatch, runtime):
+    monkeypatch.delenv("VOICESTUDIO_ARGOS_OFFLINE", raising=False)
+    log = logging.getLogger("argostranslate.utils")
+    monkeypatch.setattr(log, "level", logging.INFO)
+    assert subject.translate_argos("Hello", "en", "es") == "legacy result"
+    assert log.level == logging.INFO

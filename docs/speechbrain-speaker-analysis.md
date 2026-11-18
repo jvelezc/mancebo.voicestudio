@@ -94,9 +94,21 @@ its existing package directory. It neither downloads on customer requests nor
 patches the global Stanza module. Missing/unqualified resources fail the line;
 unchanged source text with an error is not a successful translation. Standalone
 desktop behavior remains unchanged when this setting is absent.
+Managed mode also suppresses Argos sentence-level INFO logs, which contain
+source and translated scripts, while retaining warnings and errors.
 
 For the managed Python 3.11 image, run the existing
 `core.execstack.ensure_ctranslate2_loadable` repair and import check during
 the image build. Its frozen CTranslate2 4.4 wheel requests an executable stack;
 attempting that repair only at runtime fails on a read-only root filesystem.
 Keep deployed workers read-only rather than weakening their filesystem policy.
+
+## Sequential model ownership
+
+Managed Qwen workers set `VOICESTUDIO_QWEN_NATIVE_DYNAMIC_PORT=1`. Each model
+launch obtains a separate loopback port and random-identity configuration/log
+directory. This prevents a surviving cloning server from blocking a later design
+request at the shared default port. The existing server-identity challenge is
+still required before submitting text or references. Never kill a process merely
+because it holds a port. The standalone configured-port behavior is unchanged
+when this setting is absent.
