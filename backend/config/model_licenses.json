@@ -3818,6 +3818,57 @@
           "lexicon.txt"
         ]
       }
+    },
+    {
+      "id": "speechbrain/spkrec-ecapa-voxceleb",
+      "license": "apache-2.0",
+      "commercial_use": false,
+      "review_status": "unreviewed",
+      "credit": "SpeechBrain ECAPA-TDNN VoxCeleb speaker embeddings",
+      "source_url": "https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb",
+      "evidence_url": "https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb/blob/0f99f2d0ebe89ac095bcc5903c4dd8f72b367286/README.md",
+      "revision": "0f99f2d0ebe89ac095bcc5903c4dd8f72b367286",
+      "engines": [
+        "speechbrain-ecapa"
+      ],
+      "configured_at": "VOICESTUDIO_SPEECHBRAIN_MODEL_DIR",
+      "notes": "Pinned publisher card declares Apache-2.0 for this pretrained speaker encoder. The managed adapter constructs reviewed ECAPA code and loads only the verified tensor checkpoint (SHA-256 0575cb64845e6b9a10db9bcb74d5ac32b326b8dc90352671d345e2ee3d0126a2); it does not execute downloaded HyperPyYAML. This component disclosure does not clear every pipeline dependency, input recording or output right.",
+      "runtime_revision": "0f99f2d0ebe89ac095bcc5903c4dd8f72b367286",
+      "runtime_pin_scope": "external",
+      "runtime_pin_source": "Installed model-manifest.json validated by backend/services/diarization_speechbrain.py",
+      "component_closure": "incomplete",
+      "commercial_inference": "unknown",
+      "commercial_outputs": "unknown",
+      "documents": [],
+      "artifacts": [],
+      "required_components": [],
+      "upstream_access": "not_required",
+      "audit_observations": {
+        "commercial_inference": {
+          "status": "publisher_apache_2_0",
+          "scope": "Pinned ECAPA speaker embedding checkpoint only; full workflow clearance is separate."
+        },
+        "output_terms": {
+          "status": "not_assessed",
+          "ownership_or_all_rights_cleared": false
+        },
+        "sources": [
+          {
+            "url": "https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb/blob/0f99f2d0ebe89ac095bcc5903c4dd8f72b367286/README.md",
+            "checked_at": "2026-11-18",
+            "method": "read_primary_source"
+          }
+        ],
+        "open_questions": [
+          "Governing terms at installed revision and relevant required components",
+          "Attribution/NOTICE/redistribution duties",
+          "Reference voice and input rights, consent, training-provenance scope"
+        ],
+        "identified_components": [
+          "ECAPA-TDNN speaker embedding checkpoint",
+          "SpeechBrain reviewed Python architecture; no executable model configuration"
+        ]
+      }
     }
   ],
   "dynamic_assets": [

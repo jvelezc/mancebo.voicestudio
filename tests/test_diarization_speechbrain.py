@@ -30,15 +30,15 @@ def installed(tmp_path, monkeypatch):
             }
         },
     }
-    (root / "model-manifest.json").write_text(json.dumps(manifest))
+    (root / "model-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     monkeypatch.setenv(subject.MODEL_ENV, str(root))
     return root
 
 
 def test_missing_or_wrong_license_model_is_not_loaded(tmp_path, monkeypatch, installed):
-    data = json.loads((installed / "model-manifest.json").read_text())
+    data = json.loads((installed / "model-manifest.json").read_text(encoding="utf-8"))
     data["license"] = "cc-by-nc-4.0"
-    (installed / "model-manifest.json").write_text(json.dumps(data))
+    (installed / "model-manifest.json").write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ValueError, match="provenance"):
         subject.SpeechBrainDiarization()
     monkeypatch.delenv(subject.MODEL_ENV)
