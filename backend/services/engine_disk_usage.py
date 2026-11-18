@@ -51,6 +51,15 @@ _ESTIMATES: dict[str, dict] = {
         "destination": "hf_model_cache",
         "deduplication": None,
     },
+    "qwen3-native": {
+        "package_download_bytes": 4808200096,
+        "unique_installed_bytes": 4808200096,
+        "potentially_shared_bytes": None,
+        "temporary_free_bytes": 9616400192,
+        "confidence": "estimated",
+        "destination": "hf_model_cache",
+        "deduplication": None,
+    },
 }
 _MODEL_REPOS = {
     "omnivoice": "k2-fsa/OmniVoice",
@@ -58,6 +67,7 @@ _MODEL_REPOS = {
     "audiocpp": "audio-cpp/audio.cpp-gguf",
     # Catalogue identity of a package in the shared audio.cpp repo (#2665).
     "audiocpp-dots": "audio-cpp/audio.cpp-gguf:dots-tts-soar-q8_0",
+    "qwen3-native": "audio-cpp/audio.cpp-gguf:qwen3-native-q8_0",
 }
 
 
