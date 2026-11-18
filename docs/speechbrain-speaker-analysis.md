@@ -112,3 +112,7 @@ request at the shared default port. The existing server-identity challenge is
 still required before submitting text or references. Never kill a process merely
 because it holds a port. The standalone configured-port behavior is unchanged
 when this setting is absent.
+The managed adapters also share a generation/handoff lock and reap the previous
+adapter's owned model process before loading another. Separate registry and
+prewarm instances must not keep multiple models resident inside an 8 GiB worker.
+Handoff waits for active generation; it does not interrupt it to reclaim memory.

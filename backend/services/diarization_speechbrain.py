@@ -260,6 +260,8 @@ class SpeechBrainDiarization:
                     if vector.shape == (192,) and np.isfinite(vector).all():
                         return vector
             except (OSError, ValueError, KeyError, EOFError):
+                # A missing/corrupt checkpoint is recomputed from the recording;
+                # never treat it as successful evidence or log recording content.
                 pass
         recording.seek(start)
         samples = recording.read(end - start, dtype="float32")

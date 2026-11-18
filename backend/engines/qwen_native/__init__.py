@@ -8,9 +8,15 @@ from __future__ import annotations
 
 import os
 import socket
+import threading
+import weakref
+from contextlib import nullcontext
 
 from engines.audiocpp import AudioCPPBackend, bootstrap
 from services.tts_backend import TTSInputError
+
+_MANAGED_RUNTIME_LOCK = threading.RLock()
+_MANAGED_INSTANCES = weakref.WeakSet()
 
 
 CLONE = bootstrap.ModelPackage(
@@ -99,6 +105,30 @@ class QwenNativeBackend(AudioCPPBackend):
             return directory / "launches" / self._server_model_id
         return directory
 
+    def _ensure_loaded(self) -> None:
+        if os.environ.get("VOICESTUDIO_QWEN_NATIVE_DYNAMIC_PORT") != "1":
+            return super()._ensure_loaded()
+        # The active-engine and prewarm caches can hold distinct adapter objects.
+        # They share this worker's memory limit. Serialize generation and handoff,
+        # reaping only process handles actually owned by these adapter instances.
+        with _MANAGED_RUNTIME_LOCK:
+            for previous in list(_MANAGED_INSTANCES):
+                if previous is not self:
+                    with previous._lock:
+                        owned = previous._proc
+                        previous._terminate_server()
+                        if owned is not None and owned.poll() is None:
+                            previous._proc = owned
+                            raise RuntimeError("The previous managed model did not stop; another model cannot be loaded safely")
+                        previous._port = None
+            _MANAGED_INSTANCES.add(self)
+            return super()._ensure_loaded()
+
+    def unload(self) -> None:
+        managed = os.environ.get("VOICESTUDIO_QWEN_NATIVE_DYNAMIC_PORT") == "1"
+        with _MANAGED_RUNTIME_LOCK if managed else nullcontext():
+            super().unload()
+
     def _server_configuration(self, **kwargs) -> dict:
         config = super()._server_configuration(**kwargs)
         config["threads"] = cpu_threads()
@@ -129,7 +159,8 @@ class QwenNativeBackend(AudioCPPBackend):
             raise TTSInputError("Qwen voice cloning needs the reference recording’s transcript. Add or transcribe it before generating.")
         package = CLONE if reference else DESIGN
         language = self._normalize_language_code(kw.get("language"))
-        with self._lock:
+        managed = os.environ.get("VOICESTUDIO_QWEN_NATIVE_DYNAMIC_PORT") == "1"
+        with _MANAGED_RUNTIME_LOCK if managed else nullcontext(), self._lock:
             if package != self._selected_package:
                 self._terminate_server()
                 self._port = None
