@@ -4377,5 +4377,14 @@
     "unavailable": "Automatyczne raporty są niedostępne lub wyłączone dla tej aplikacji.",
     "managed": "Zarządzaj tym wyborem w aplikacji komputerowej połączonej z tą przeglądarką.",
     "save_failed": "Nie udało się zapisać wyboru. Spróbuj ponownie."
+  },
+  "managedStudio": {
+    "studioTitle": "Studio mowy",
+    "sessionExpired": "Sesja studia zakończyła się. Połącz się ponownie ze swojego obszaru Mancebo.",
+    "unavailable": "Nie udało się otworzyć studia mowy. Spróbuj ponownie lub wróć do Mancebo.",
+    "openWorkspace": "Otwórz mój obszar Mancebo",
+    "retry": "Spróbuj ponownie",
+    "productName": "Mancebo.ai",
+    "sourceCode": "Kod źródłowy"
   }
 }

@@ -4345,5 +4345,14 @@
     "unavailable": "Automatic reports are unavailable or disabled for this app.",
     "managed": "Manage this choice in the desktop app connected to this browser.",
     "save_failed": "Could not save this choice. Please try again."
+  },
+  "managedStudio": {
+    "studioTitle": "Speech studio",
+    "sessionExpired": "Your studio session has ended. Reconnect from your Mancebo workspace.",
+    "unavailable": "The speech studio could not be opened. Try again or return to Mancebo.",
+    "openWorkspace": "Open my Mancebo workspace",
+    "retry": "Try again",
+    "productName": "Mancebo.ai",
+    "sourceCode": "Source code"
   }
 }

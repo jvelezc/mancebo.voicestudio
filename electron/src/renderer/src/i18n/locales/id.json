@@ -4345,5 +4345,14 @@
     "unavailable": "Laporan otomatis tidak tersedia atau dinonaktifkan untuk aplikasi ini.",
     "managed": "Kelola pilihan ini di aplikasi desktop yang terhubung ke browser ini.",
     "save_failed": "Pilihan ini tidak dapat disimpan. Silakan coba lagi."
+  },
+  "managedStudio": {
+    "studioTitle": "Studio suara",
+    "sessionExpired": "Sesi studio Anda telah berakhir. Hubungkan kembali dari ruang kerja Mancebo Anda.",
+    "unavailable": "Studio suara tidak dapat dibuka. Coba lagi atau kembali ke Mancebo.",
+    "openWorkspace": "Buka ruang kerja Mancebo saya",
+    "retry": "Coba lagi",
+    "productName": "Mancebo.ai",
+    "sourceCode": "Kode sumber"
   }
 }

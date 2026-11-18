@@ -24,9 +24,15 @@ import { GenerateBudgetSync } from '@/hooks/use-generate-budget-sync';
 import { runRendererTask } from '@/lib/global-error-recovery';
 import { WebAuthGate } from '@/components/web-auth-gate';
 import { ModelLicenceGate } from '@/features/settings/model-licence-acceptance';
+import { studioMode } from '@/lib/managed-studio';
 
 export function App() {
   const { t } = useTranslation();
+  useEffect(() => {
+    if (studioMode().kind === 'managed') {
+      document.title = `${t('managedStudio.studioTitle')} — ${t('managedStudio.productName')}`;
+    }
+  }, [t]);
   useEffect(() => {
     const record = () => recordRouteBreadcrumb();
     record();

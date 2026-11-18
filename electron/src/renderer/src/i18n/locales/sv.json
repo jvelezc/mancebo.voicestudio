@@ -4345,5 +4345,14 @@
     "unavailable": "Automatiska rapporter är inte tillgängliga eller är avstängda för den här appen.",
     "managed": "Hantera det här valet i datorappen som är ansluten till den här webbläsaren.",
     "save_failed": "Det gick inte att spara valet. Försök igen."
+  },
+  "managedStudio": {
+    "studioTitle": "Talstudio",
+    "sessionExpired": "Din studiosession har avslutats. Anslut igen från din Mancebo-arbetsyta.",
+    "unavailable": "Talstudion kunde inte öppnas. Försök igen eller gå tillbaka till Mancebo.",
+    "openWorkspace": "Öppna min Mancebo-arbetsyta",
+    "retry": "Försök igen",
+    "productName": "Mancebo.ai",
+    "sourceCode": "Källkod"
   }
 }

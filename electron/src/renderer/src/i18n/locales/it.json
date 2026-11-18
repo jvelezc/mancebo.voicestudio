@@ -4347,5 +4347,14 @@
     "unavailable": "Le segnalazioni automatiche non sono disponibili o sono disattivate per questa app.",
     "managed": "Gestisci questa scelta nell’app desktop collegata a questo browser.",
     "save_failed": "Impossibile salvare questa scelta. Riprova."
+  },
+  "managedStudio": {
+    "studioTitle": "Studio vocale",
+    "sessionExpired": "La sessione dello studio è terminata. Ricollegati dal tuo spazio Mancebo.",
+    "unavailable": "Impossibile aprire lo studio vocale. Riprova o torna a Mancebo.",
+    "openWorkspace": "Apri il mio spazio Mancebo",
+    "retry": "Riprova",
+    "productName": "Mancebo.ai",
+    "sourceCode": "Codice sorgente"
   }
 }
