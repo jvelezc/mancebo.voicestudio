@@ -4345,5 +4345,14 @@
     "unavailable": "Automatische rapporten zijn niet beschikbaar of uitgeschakeld voor deze app.",
     "managed": "Beheer deze keuze in de desktopapp die met deze browser is verbonden.",
     "save_failed": "Deze keuze kon niet worden opgeslagen. Probeer het opnieuw."
+  },
+  "managedStudio": {
+    "studioTitle": "Spraakstudio",
+    "sessionExpired": "Je studiosessie is beëindigd. Maak opnieuw verbinding via je Mancebo-werkruimte.",
+    "unavailable": "De spraakstudio kon niet worden geopend. Probeer het opnieuw of ga terug naar Mancebo.",
+    "openWorkspace": "Mijn Mancebo-werkruimte openen",
+    "retry": "Opnieuw proberen",
+    "productName": "Mancebo.ai",
+    "sourceCode": "Broncode"
   }
 }

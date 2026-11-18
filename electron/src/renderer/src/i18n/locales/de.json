@@ -4345,5 +4345,14 @@
     "unavailable": "Automatische Berichte sind für diese App nicht verfügbar oder deaktiviert.",
     "managed": "Verwalte diese Auswahl in der Desktop-App, die mit diesem Browser verbunden ist.",
     "save_failed": "Diese Auswahl konnte nicht gespeichert werden. Bitte versuche es erneut."
+  },
+  "managedStudio": {
+    "studioTitle": "Sprachstudio",
+    "sessionExpired": "Deine Studiositzung ist beendet. Verbinde dich erneut über deinen Mancebo-Arbeitsbereich.",
+    "unavailable": "Das Sprachstudio konnte nicht geöffnet werden. Versuche es erneut oder kehre zu Mancebo zurück.",
+    "openWorkspace": "Meinen Mancebo-Arbeitsbereich öffnen",
+    "retry": "Erneut versuchen",
+    "productName": "Mancebo.ai",
+    "sourceCode": "Quellcode"
   }
 }

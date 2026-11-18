@@ -4347,5 +4347,14 @@
     "unavailable": "Os relatórios automáticos estão indisponíveis ou desativados neste aplicativo.",
     "managed": "Gerencie esta opção no aplicativo de computador conectado a este navegador.",
     "save_failed": "Não foi possível salvar esta opção. Tente novamente."
+  },
+  "managedStudio": {
+    "studioTitle": "Estúdio de voz",
+    "sessionExpired": "Sua sessão do estúdio terminou. Conecte-se novamente pelo seu espaço do Mancebo.",
+    "unavailable": "Não foi possível abrir o estúdio de voz. Tente novamente ou volte ao Mancebo.",
+    "openWorkspace": "Abrir meu espaço do Mancebo",
+    "retry": "Tentar novamente",
+    "productName": "Mancebo.ai",
+    "sourceCode": "Código-fonte"
   }
 }

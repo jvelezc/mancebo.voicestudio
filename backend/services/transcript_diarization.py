@@ -51,10 +51,11 @@ def diarize_segments(
         if pipeline is None:
             return labels, error or "LOAD_FAILED"
         from services.diarization_native import NativeSortformer
+        from services.diarization_speechbrain import SpeechBrainDiarization
 
         # Sortformer detects up to four speakers and rejects an exact count.
         hint = None if isinstance(pipeline, NativeSortformer) else num_speakers
-        if isinstance(pipeline, NativeSortformer):
+        if isinstance(pipeline, (NativeSortformer, SpeechBrainDiarization)):
             # Its child process is the only part that can be stopped. When the
             # request is abandoned (timeout or client gone) the guard sets this
             # scope's cancellation; passing it through lets the child exit
@@ -62,9 +63,8 @@ def diarize_segments(
             from services.inference_cancellation import current_cancellation
 
             scope = current_cancellation()
-            diarization = pipeline(
-                audio_path, cancel_check=scope.cancelled.is_set if scope else None
-            )
+            diarization = pipeline(audio_path, num_speakers=hint,
+                cancel_check=scope.cancelled.is_set if scope else None)
         else:
             diarization = pipeline(audio_path, num_speakers=hint) if hint else pipeline(audio_path)
         assigned = assign_speakers_from_diarization([d for _, d in timed], diarization)

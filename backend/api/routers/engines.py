@@ -192,6 +192,7 @@ def diarisation_status():
     """Describe the selected local diarisation runtime without loading weights."""
     from services.diarization_runtime import (
         PYANNOTE,
+        SPEECHBRAIN,
         SORTFORMER,
         selected_backend,
         sortformer_status,
@@ -227,6 +228,14 @@ def diarisation_status():
         "reason": native_reason,
     })
 
+    from services.diarization_speechbrain import status as speechbrain_status
+    speechbrain = speechbrain_status()
+    if speechbrain["model_installed"] or selected == SPEECHBRAIN:
+        options.append({"id": SPEECHBRAIN, "label": "SpeechBrain ECAPA (CPU)", **speechbrain})
+    if selected == SPEECHBRAIN:
+        return {"active": SPEECHBRAIN, "label": "SpeechBrain ECAPA (CPU)",
+                **speechbrain, "loaded": False, "options": options}
+
     if native:
         from services.diarization_native import is_running
         return {"active": SORTFORMER, "label": "Sortformer v1 (audio.cpp)",
@@ -248,7 +257,7 @@ class DiarisationSelection(BaseModel):
 @router.post("/engines/diarisation/select", dependencies=[Depends(require_admin)])
 def select_diarisation_engine(request: DiarisationSelection):
     """Persist an installed diarisation runtime; environment overrides still win."""
-    from services.diarization_runtime import SORTFORMER, select_backend, selected_backend
+    from services.diarization_runtime import SPEECHBRAIN, SORTFORMER, select_backend, selected_backend
 
     status = diarisation_status()
     option = next(
@@ -260,7 +269,7 @@ def select_diarisation_engine(request: DiarisationSelection):
     if not option["installed"]:
         raise HTTPException(409, option.get("reason") or "Install this diarisation engine first")
     select_backend(request.engine_id)
-    if request.engine_id == SORTFORMER:
+    if request.engine_id in {SORTFORMER, SPEECHBRAIN}:
         # Native Sortformer is stateless. Release a previously loaded pyannote
         # pipeline so Engine Ready cannot hide stale accelerator memory.
         from services import model_manager

@@ -1138,7 +1138,9 @@ async def dub_download(
     # can still cut off the trailing frame; let ffmpeg keep both streams.
     # Otherwise keep the legacy `-shortest` so a slightly-overrunning track
     # doesn't extend the mux past the video.
-    if not stretch_entry and retime_decision is None:
+    # Managed full-recording exports retain silent video after the last spoken
+    # line as well as any longer audio. Standalone keeps its legacy policy.
+    if not stretch_entry and retime_decision is None and os.environ.get("VOICESTUDIO_PRESERVE_FULL_VIDEO") != "1":
         cmd += ["-shortest"]
     cmd += [output_path, "-y"]
 
@@ -1301,8 +1303,9 @@ async def dub_preview_video(
         "surgical_v2_" + Path(bg_audio).stem + _bed_level_tag(bed_level)
         if (preserve_bg and has_bg) else "nobg"
     )
+    preview_version = "full_v1" if os.environ.get("VOICESTUDIO_PRESERVE_FULL_VIDEO") == "1" else "v2"
     preview_path = os.path.realpath(
-        os.path.join(exports_dir, f"preview_v2_{lang}_{bg_suffix}.mp4")
+        os.path.join(exports_dir, f"preview_{preview_version}_{lang}_{bg_suffix}.mp4")
     )
     if not preview_path.startswith(_base + os.sep):
         raise HTTPException(status_code=400, detail="Invalid path")
@@ -1459,7 +1462,7 @@ async def dub_preview_video(
         cmd += ["-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"]
         # `-shortest` would cut the retimed video at the (slightly different)
         # audio length and lose the trailing frame; only use it on the copy path.
-        if not stretch_entry and retime_decision is None:
+        if not stretch_entry and retime_decision is None and os.environ.get("VOICESTUDIO_PRESERVE_FULL_VIDEO") != "1":
             cmd += ["-shortest"]
         cmd += [mux_path, "-y"]
 

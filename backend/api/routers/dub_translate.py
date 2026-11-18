@@ -969,7 +969,7 @@ async def dub_translate(req: TranslateRequest):
                         translated_text = (
                             seg.text
                             if from_code == to_code
-                            else argostranslate.translate.translate(seg.text, from_code, to_code)
+                            else translation_engines.translate_argos(seg.text, from_code, to_code)
                         )
                         results.append({"id": seg.id, "text": translated_text})
                     except Exception as e:

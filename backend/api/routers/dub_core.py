@@ -2269,7 +2269,7 @@ async def dub_transcribe_stream(
                 resolved = token_resolver.resolve()
 
                 if err_sentinel == DIARIZATION_ERR_MISSING:
-                    from services.diarization_runtime import SORTFORMER, selected_backend
+                    from services.diarization_runtime import SPEECHBRAIN, SORTFORMER, selected_backend
                     native_selected = selected_backend() == SORTFORMER
                     detail = (
                         "Native Sortformer files are missing. Install audiocpp_cli beside "
@@ -2283,6 +2283,13 @@ async def dub_transcribe_stream(
                         "this job. Using silence gaps for now; rapid speaker turns "
                         "may be merged."
                     )
+                    if selected_backend() == SPEECHBRAIN:
+                        detail = (
+                            "The local SpeechBrain model files are missing or incomplete. "
+                            "Ask the administrator to install and configure the ECAPA checkpoint and its provenance manifest, then retry transcription. No models were "
+                            "downloaded during this job. Using silence gaps for now; rapid "
+                            "speaker turns may be merged."
+                        )
                     error_class = "DIARIZATION_MODEL_MISSING"
                 elif err_sentinel == DIARIZATION_ERR_NO_TOKEN:
                     detail = (
@@ -2345,7 +2352,8 @@ async def dub_transcribe_stream(
                 # omit it entirely when None so we don't depend on the kwarg
                 # existing in every pyannote build.
                 from services.diarization_native import NativeSortformer
-                if isinstance(diar_pipe, NativeSortformer):
+                from services.diarization_speechbrain import SpeechBrainDiarization
+                if isinstance(diar_pipe, (NativeSortformer, SpeechBrainDiarization)):
                     diar = diar_pipe(
                         asr_audio_target, num_speakers=num_speakers, job_id=job_id,
                         cancel_check=lambda: bool(job.get("aborted")) or task_manager.is_cancelled(job_id),
@@ -2376,7 +2384,7 @@ async def dub_transcribe_stream(
                         separation,
                     )
                     return recovered_segments, None, "phrase_embeddings"
-                return resplit, None, "audiocpp-sortformer" if isinstance(diar_pipe, NativeSortformer) else "pyannote"
+                return resplit, None, "audiocpp-sortformer" if isinstance(diar_pipe, NativeSortformer) else getattr(diar_pipe, "backend_id", "pyannote")
             except Exception as e:
                 logger.exception("Diarization failed")
                 # Inline ASR turns beat the silence-gap heuristic as a crash

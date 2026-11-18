@@ -4345,5 +4345,14 @@
     "unavailable": "Otomatik raporlar bu uygulama için kullanılamıyor veya devre dışı.",
     "managed": "Bu seçimi tarayıcıya bağlı masaüstü uygulamasından yönetin.",
     "save_failed": "Bu seçim kaydedilemedi. Lütfen tekrar deneyin."
+  },
+  "managedStudio": {
+    "studioTitle": "Konuşma stüdyosu",
+    "sessionExpired": "Stüdyo oturumunuz sona erdi. Mancebo çalışma alanınızdan yeniden bağlanın.",
+    "unavailable": "Konuşma stüdyosu açılamadı. Yeniden deneyin veya Mancebo’ya dönün.",
+    "openWorkspace": "Mancebo çalışma alanımı aç",
+    "retry": "Yeniden dene",
+    "productName": "Mancebo.ai",
+    "sourceCode": "Kaynak kodu"
   }
 }

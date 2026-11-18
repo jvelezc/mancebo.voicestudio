@@ -322,6 +322,14 @@ class AudioCPPBackend(TTSBackend):
         """Engine-specific configuration without changing shared process ownership."""
         return build_server_config(**kwargs)
 
+    def _select_server_port(self, package) -> int:
+        return bootstrap.server_port(package)
+
+    def _runtime_directory(self, package) -> Path:
+        from core.config import DATA_DIR
+
+        return Path(str(DATA_DIR)) / package.workdir
+
     def _ensure_loaded(self) -> None:
         """Spawn the server (once) and wait for ``/health``. Idempotent."""
         with self._lock:
@@ -334,7 +342,7 @@ class AudioCPPBackend(TTSBackend):
             binary = bootstrap.resolve_server_binary()
             selection = bootstrap.resolve_compute_selection()
             model_file = bootstrap.resolve_model_file(package)
-            self._port = bootstrap.server_port(package)
+            self._port = self._select_server_port(package)
             # The random model id is a per-launch challenge. Before sending
             # speech text or a reference path, _verify_server_identity asks
             # /v1/models to prove this is the child configured by this process,
@@ -352,9 +360,7 @@ class AudioCPPBackend(TTSBackend):
             self._selection = selection
             self._device = selection.device.target
             self._provider = selection.device.backend
-            from core.config import DATA_DIR
-
-            workdir = Path(str(DATA_DIR)) / package.workdir
+            workdir = self._runtime_directory(package)
             workdir.mkdir(parents=True, exist_ok=True)
             self._server_json = workdir / "server.json"
             flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
