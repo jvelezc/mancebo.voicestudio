@@ -17,12 +17,17 @@ function sharingViolation(error: unknown): boolean {
   );
 }
 const pause = () => new Promise((resolve) => setTimeout(resolve, 10));
-async function readSettled(path: string): Promise<Identity | null> {
-  for (let attempt = 0; ; attempt++) {
+// The publisher's Windows rename retry can take about 1.5 seconds. Readers and
+// lock contenders share one larger, bounded deadline instead of abandoning a
+// valid publication after 200/500 ms or multiplying nested retry budgets.
+const CONTENTION_MS = 3000;
+class IdentityAppeared extends Error {}
+async function readSettled(path: string, deadline: number): Promise<Identity | null> {
+  for (;;) {
     try {
       return await readIdentity(path);
     } catch (error) {
-      if (attempt >= 20 || !sharingViolation(error)) throw error;
+      if (performance.now() >= deadline || !(error instanceof IdentityAppeared || sharingViolation(error))) throw error;
       await pause();
     }
   }
@@ -69,9 +74,14 @@ async function readIdentity(path: string): Promise<Identity | null> {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       // A dangling link is present, not an absent metadata file.
       try {
-        await lstat(path);
+        const entry = await lstat(path);
+        // Another creator can publish after open observed ENOENT. Retry the
+        // complete verified read, not the stale missing-file error. A dangling
+        // link or other non-regular entry still fails without following it.
+        if (entry.isFile()) throw new IdentityAppeared();
       } catch (missing) {
         if ((missing as NodeJS.ErrnoException).code === 'ENOENT') return null;
+        throw missing;
       }
     }
     throw error;
@@ -99,11 +109,12 @@ export async function localDataIdentity(directory: string): Promise<string | und
       return current.isDirectory() && current.dev === root.dev && current.ino === root.ino;
     };
     const matches = (record: Identity | null) => record?.dev === dev && record.ino === ino;
-    const previous = await readSettled(path);
+    const deadline = performance.now() + CONTENTION_MS;
+    const previous = await readSettled(path, deadline);
     if (matches(previous)) return (await sameRoot()) ? previous!.id : undefined;
     // One creator/rotation at a time. Other instances may read the completed
     // atomic publication; a stale or inaccessible lock simply leaves it unknown.
-    for (let attempt = 0; attempt < 50; attempt++) {
+    while (performance.now() < deadline) {
       try {
         lock = await open(lockPath, 'wx', 0o600);
         break;
@@ -111,12 +122,12 @@ export async function localDataIdentity(directory: string): Promise<string | und
         if ((error as NodeJS.ErrnoException).code !== 'EEXIST' && !sharingViolation(error))
           throw error;
         await pause();
-        const published = await readSettled(path);
+        const published = await readSettled(path, deadline);
         if (matches(published)) return (await sameRoot()) ? published!.id : undefined;
       }
     }
     if (!lock) return;
-    const published = await readSettled(path);
+    const published = await readSettled(path, deadline);
     if (matches(published)) return (await sameRoot()) ? published!.id : undefined;
     const value: Identity = { version: 1, id: randomUUID(), dev, ino };
     temporary = `${path}.${randomUUID()}.tmp`;
