@@ -11,7 +11,8 @@ _UNBOUNDED_FIELDS = (
     "max_audio_only_rate", "audio_rate_cap", "video_slow_cap", "gap_guard_s",
 )
 # min_audio_rate is the slowest-speed floor: bounded to 0.5-1.0 by the schema.
-_NUMERIC_FIELDS = (*_UNBOUNDED_FIELDS, "min_audio_rate")
+_NUMERIC_FIELDS = (*_UNBOUNDED_FIELDS, "min_audio_rate", "audio_only_rate_cap")
+_BOOLEAN_FIELDS = ("allow_video_retime", "preserve_pauses")
 
 
 @pytest.mark.parametrize("field", _NUMERIC_FIELDS)
@@ -24,7 +25,7 @@ def test_fit_options_reject_non_finite_values(field, value):
     assert exc.value.errors()[0]["loc"] == (field,)
 
 
-@pytest.mark.parametrize("field", _NUMERIC_FIELDS[:3])
+@pytest.mark.parametrize("field", (*_UNBOUNDED_FIELDS[:3], "audio_only_rate_cap"))
 @pytest.mark.parametrize("value", [-1.0, 0.0, 0.99])
 def test_fit_options_reject_rates_below_one(field, value):
     with pytest.raises(ValidationError):
@@ -36,10 +37,10 @@ def test_fit_options_reject_negative_gap_guard():
         FitOptions(gap_guard_s=-0.01)
 
 
-@pytest.mark.parametrize("options", [{}, dict.fromkeys((*_NUMERIC_FIELDS, "allow_video_retime"))])
+@pytest.mark.parametrize("options", [{}, dict.fromkeys((*_NUMERIC_FIELDS, *_BOOLEAN_FIELDS))])
 def test_fit_options_leave_default_resolution_to_the_planner(options):
     assert FitOptions(**options).model_dump() == dict.fromkeys(
-        (*_NUMERIC_FIELDS, "allow_video_retime"),
+        (*_NUMERIC_FIELDS, *_BOOLEAN_FIELDS),
     )
 
 
@@ -56,10 +57,23 @@ def test_fit_options_preserve_boundary_values_and_false():
         "video_slow_cap": 1.0,
         "gap_guard_s": 0.0,
         "allow_video_retime": False,
+        "preserve_pauses": False,
+        "audio_only_rate_cap": 1.0,
     }
     assert FitOptions(**values).model_dump() == {**values, "min_audio_rate": None}
     assert FitOptions(min_audio_rate=0.5).min_audio_rate == 0.5
     assert FitOptions(min_audio_rate=1.0).min_audio_rate == 1.0
+
+
+@pytest.mark.parametrize("value", [0.0, 0.99, 1.81, 2.0])
+def test_audio_only_rate_cap_rejects_out_of_range_values(value):
+    with pytest.raises(ValidationError):
+        FitOptions(audio_only_rate_cap=value)
+
+
+def test_pause_preservation_and_audio_only_cap_remain_explicit_overrides():
+    assert FitOptions(preserve_pauses=True).preserve_pauses is True
+    assert FitOptions(audio_only_rate_cap=1.8).audio_only_rate_cap == 1.8
 
 
 @pytest.mark.parametrize("value", [0.0, 0.49, 1.01, 2.0])

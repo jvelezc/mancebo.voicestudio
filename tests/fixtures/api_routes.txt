@@ -105,6 +105,7 @@ GET /dub/media/{job_id}
 GET /dub/onsets/{job_id}
 GET /dub/preview-video/{job_id}
 GET /dub/preview/{job_id}/{segment_index}
+GET /dub/quality/{job_id}
 GET /dub/segments-text/{job_id}
 GET /dub/srt/{job_id}
 GET /dub/srt/{job_id}/{filename}

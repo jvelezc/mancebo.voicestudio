@@ -17,6 +17,7 @@ import {
   joinApiPath,
 } from "./client";
 import { rewriteDevApiProxyPath } from "../../../../shared/web-api-routing";
+import * as managedStudio from "@/lib/managed-studio";
 
 beforeEach(() => {
   _resetBackendContactForTests();
@@ -136,6 +137,23 @@ describe("errorFromResponse", () => {
 });
 
 describe("apiFetch", () => {
+  it("managed studio uses only its gateway cookie despite stale native credentials", async () => {
+    vi.stubGlobal("__WEB_DEPLOYMENT__", true);
+    vi.spyOn(managedStudio, "studioMode").mockReturnValue({ kind: "managed", studio: {
+      workspaceId: "a3f8e672-e26d-4ef3-8af8-c4525b72fd58", canOperate: true, platformAdmin: true,
+    } });
+    sessionStorage.setItem("ov_pin", "stale-native-pin");
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      await apiFetch("/system/info", { headers: { Authorization: "Bearer stale-operator", "X-OmniVoice-Pin": "stale-pin" } });
+      const options = fetchMock.mock.calls[0]?.[1] as RequestInit;
+      expect(new Headers(options.headers).get("Authorization")).toBeNull();
+      expect(new Headers(options.headers).get("X-OmniVoice-Pin")).toBeNull();
+      expect(options.credentials).toBe("include");
+    } finally { sessionStorage.removeItem("ov_pin"); }
+  });
+
   it("prefixes API_BASE and returns the response when ok", async () => {
     const fetchMock = vi.fn(
       async () => new Response('{"ok":true}', { status: 200 }),

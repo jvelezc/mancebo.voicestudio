@@ -164,3 +164,44 @@ def test_seg_ids_override():
     dub = [_seg(0, 3, "x")]
     out = score_dub(dub, [_seg(0, 3, "x")], seg_ids=["custom"])
     assert out[0].seg_id == "custom"
+
+
+def test_recognized_sentence_words_are_assigned_to_their_own_dub_line():
+    dub = [_seg(0, 2, "En plena noche", "night"), _seg(2.5, 5, "Tu bebé despierta", "awake")]
+    recog = [{"start": 0.1, "end": 4.8, "text": "En plena noche. Tu bebé despierta.", "words": [
+        {"word": " En", "start": .1, "end": .3},
+        {"word": " plena", "start": .3, "end": .8},
+        {"word": " noche.", "start": .8, "end": 1.8},
+        {"word": " Tu", "start": 2.6, "end": 2.8},
+        {"word": " bebé", "start": 2.8, "end": 3.4},
+        {"word": " despierta.", "start": 3.4, "end": 4.8},
+    ]}]
+    result = score_dub(dub, recog)
+    assert [part.recognized_text for part in result] == ["En plena noche.", "Tu bebé despierta."]
+    assert [part.flagged for part in result] == [False, False]
+    assert result[0].new_end == 1.8
+    assert result[1].new_start == 2.6
+
+
+def test_word_timing_does_not_hide_wrong_or_missing_words():
+    dub = [_seg(0, 2, "pon al bebé boca arriba", "safe"), _seg(3, 4, "y descansa", "rest")]
+    recog = [{"start": .1, "end": 1.8, "text": "pon al bebé boca abajo", "words": [
+        {"word": "pon", "start": .1, "end": .3},
+        {"word": "al", "start": .3, "end": .5},
+        {"word": "bebé", "start": .5, "end": .9},
+        {"word": "boca", "start": .9, "end": 1.2},
+        {"word": "abajo", "start": 1.2, "end": 1.8},
+    ]}]
+    result = score_dub(dub, recog, drift_threshold=.2)
+    assert result[0].drift == .2 and result[0].flagged
+    assert result[1].drift == 1.0 and result[1].flagged
+    assert result[1].recognized_text == ""
+
+
+def test_a_word_crossing_a_cue_boundary_is_not_counted_twice():
+    dub = [_seg(0, 1, "hola", "a"), _seg(1, 2, "mundo", "b")]
+    recog = [{"start": .2, "end": 1.8, "text": "hola mundo", "words": [
+        {"word": "hola", "start": .2, "end": 1.1},
+        {"word": "mundo", "start": 1.2, "end": 1.8},
+    ]}]
+    assert [part.drift for part in score_dub(dub, recog)] == [0.0, 0.0]

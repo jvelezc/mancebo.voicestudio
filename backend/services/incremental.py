@@ -148,6 +148,13 @@ def fit_fingerprint(params: dict) -> str:
     min_rate = params.get("min_audio_rate")
     if min_rate not in (None, "") and float(min_rate) != _MIN_AUDIO_RATE_DEFAULT:
         payload["min_audio_rate"] = _canon_value("min_audio_rate", min_rate)
+    # Opt-in policies must invalidate only affected fitted tracks. Preserve
+    # established fingerprints for absent/default options.
+    if params.get("preserve_pauses") is True:
+        payload["preserve_pauses"] = True
+    audio_cap = params.get("audio_only_rate_cap")
+    if audio_cap not in (None, "") and float(audio_cap) != 1.8:
+        payload["audio_only_rate_cap"] = _canon_value("audio_only_rate_cap", audio_cap)
     blob = json.dumps(payload, sort_keys=True, ensure_ascii=False)
     return hashlib.sha1(blob.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
 

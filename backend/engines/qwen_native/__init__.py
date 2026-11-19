@@ -7,6 +7,7 @@ switching between design and cloning reaps that server before loading the other.
 from __future__ import annotations
 
 import os
+import hashlib
 import socket
 import threading
 import weakref
@@ -69,6 +70,41 @@ class QwenNativeBackend(AudioCPPBackend):
         super().__init__()
         self._selected_package = CLONE
         self._language: str | None = None
+        self._resume_loaded_proof = None
+        self._resume_hashes = {}
+
+    def _artifact_proof(self):
+        """Hash the exact local native runtime and model, with change detection."""
+        try:
+            proof = {"family": self._package().family, "threads": cpu_threads()}
+            for name, path in (("runtime", bootstrap.resolve_server_binary()),
+                               ("model", bootstrap.resolve_model_file(self._package()))):
+                path = path.resolve()
+                before = path.stat()
+                identity = (str(path), before.st_dev, before.st_ino, before.st_size,
+                            before.st_mtime_ns, before.st_ctime_ns)
+                if identity not in self._resume_hashes:
+                    with path.open("rb") as source:
+                        digest = hashlib.file_digest(source, "sha256").hexdigest()
+                    after = path.stat()
+                    if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+                        return None
+                    self._resume_hashes = {key: value for key, value in self._resume_hashes.items() if key[0] != str(path)}
+                    self._resume_hashes[identity] = digest
+                proof[name] = {"path": str(path), "sha256": self._resume_hashes[identity]}
+            return proof
+        except (OSError, RuntimeError, ValueError):
+            return None
+
+    def resume_proof(self):
+        """Only managed native processes with unchanged artifacts can resume."""
+        if os.environ.get("VOICESTUDIO_QWEN_NATIVE_DYNAMIC_PORT") != "1":
+            return None
+        with _MANAGED_RUNTIME_LOCK, self._lock:
+            current = self._artifact_proof()
+            if self._proc is not None and self._proc.poll() is None:
+                return current if current == self._resume_loaded_proof else None
+            return current
 
     @classmethod
     def is_available(cls) -> tuple[bool, str]:
@@ -122,7 +158,12 @@ class QwenNativeBackend(AudioCPPBackend):
                             raise RuntimeError("The previous managed model did not stop; another model cannot be loaded safely")
                         previous._port = None
             _MANAGED_INSTANCES.add(self)
-            return super()._ensure_loaded()
+            previous = self._proc
+            candidate = self._artifact_proof()
+            result = super()._ensure_loaded()
+            if self._proc is not previous:
+                self._resume_loaded_proof = candidate
+            return result
 
     def unload(self) -> None:
         managed = os.environ.get("VOICESTUDIO_QWEN_NATIVE_DYNAMIC_PORT") == "1"

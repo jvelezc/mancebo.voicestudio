@@ -166,6 +166,82 @@ def _track_samples(job_dir):
     return wav.shape[-1], sr
 
 
+def test_managed_generation_preserves_source_pauses_and_full_tail(patched_generate, monkeypatch):
+    from services.audio_io import load_audio
+
+    monkeypatch.setenv("VOICESTUDIO_DUB_NATURAL_PACING", "1")
+    run, model, job, directory = patched_generate
+    job["duration"] = 20.0
+    events = run(_body([
+        {"start": 1, "end": 3, "text": "2.0:Hola"},
+        {"start": 11, "end": 13, "text": "2.0:De nuevo"},
+    ], timing_strategy="strict_slot", speed=1.8))
+    _done(events)
+    track, rate = load_audio(str(directory / "dubbed_es.wav"))
+    assert track.shape[-1] == 20 * rate
+    assert torch.count_nonzero(track[..., 4 * rate:10 * rate]) == 0
+    assert torch.count_nonzero(track[..., 14 * rate:]) == 0
+    assert torch.count_nonzero(track[..., rate:3 * rate]) > rate
+    assert len(model.calls) == 2
+    assert job["dubbed_tracks"]["es"]["timing_strategy"] == "smart_fit"
+    parameters = job["fit_plans"]["es"]["params"]
+    assert parameters["preserve_pauses"] is True
+    assert parameters["audio_only_rate_cap"] == 1.1
+
+
+def test_managed_generation_rejects_rushed_line_without_replacing_existing_track(patched_generate, monkeypatch):
+    monkeypatch.setenv("VOICESTUDIO_DUB_NATURAL_PACING", "1")
+    run, _, job, directory = patched_generate
+    previous = {"audio_path": "previous-reviewed.wav", "revision": "keep"}
+    job["dubbed_tracks"]["es"] = previous.copy()
+    events = run(_body([
+        {"start": 0, "end": 2, "text": "4.0:Esta traducción es demasiado larga"},
+    ], timing_strategy="strict_slot"))
+    errors = [event for event in events if event.get("type") == "error"]
+    assert errors and errors[-1]["error_code"] == "dub_timing_overflow"
+    assert errors[-1]["segment"] == 0
+    assert errors[-1]["segment_id"] == "0"
+    assert errors[-1]["timing_review"] == [{"segment": 0, "segment_id": "0", "natural_seconds": 4.0, "available_seconds": 2.0, "maximum_audio_rate": 1.1}]
+    assert not any(event.get("type") == "done" for event in events)
+    assert job["dubbed_tracks"]["es"] == previous
+
+
+def test_managed_fit_ignores_generated_edge_padding_without_compressing_internal_pauses(patched_generate, monkeypatch):
+    from services.audio_io import load_audio
+    monkeypatch.setenv("VOICESTUDIO_DUB_NATURAL_PACING", "1")
+    run, model, job, directory = patched_generate
+    def padded_voice(**kwargs):
+        # Half a second of model padding on each end is not spoken content.
+        # The short pause inside the sentence must stay intact.
+        return [torch.cat([torch.zeros(1, SR // 2), torch.full((1, SR // 2), .25),
+                           torch.zeros(1, SR // 10), torch.full((1, SR // 2), .25),
+                           torch.zeros(1, SR // 2)], dim=-1)]
+    monkeypatch.setattr(model, "generate", padded_voice)
+    events = run(_body([{"start": 0, "end": 1.2, "text": "One natural phrase"}], timing_strategy="smart_fit"))
+    _done(events)
+    evidence = job["fit_plans"]["es"]["delivery_segments"][0]
+    assert evidence["audio_rate"] == 1
+    voice, rate = load_audio(str(directory / "dubbed_es.wav"))
+    assert torch.count_nonzero(voice[..., int(.57 * rate):int(.63 * rate)]) == 0
+
+
+def test_managed_natural_delivery_extends_the_complete_video_timeline_and_keeps_source_gaps(patched_generate, monkeypatch):
+    monkeypatch.setenv("VOICESTUDIO_DUB_NATURAL_PACING", "1")
+    run, _, job, directory = patched_generate
+    job["duration"] = 10
+    events = run(_body([{"start": 1, "end": 2, "text": "2.0:Una frase"},
+                        {"start": 4, "end": 5, "text": "1.0:Hola"}], timing_strategy="stretch_video"))
+    _done(events)
+    evidence = job["fit_plans"]["es"]
+    first, second = evidence["delivery_segments"]
+    assert first["audio_rate"] <= 1.1
+    assert second["start"] - first["end"] == pytest.approx(2, abs=.0002)
+    assert evidence["total_duration"] - second["end"] == pytest.approx(5, abs=.0002)
+    frames, sample_rate = _track_samples(directory)
+    assert frames / sample_rate == pytest.approx(evidence["total_duration"], abs=.0002)
+    assert frames / sample_rate > 10
+
+
 # ── HTTP validation before synthesis ───────────────────────────────────
 
 

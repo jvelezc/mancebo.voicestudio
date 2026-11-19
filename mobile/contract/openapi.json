@@ -2431,6 +2431,19 @@
       ],
       "title": "Allow Video Retime"
      },
+     "audio_only_rate_cap": {
+      "anyOf": [
+       {
+        "maximum": 1.8,
+        "minimum": 1.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Audio Only Rate Cap"
+     },
      "audio_rate_cap": {
       "anyOf": [
        {
@@ -2479,6 +2492,17 @@
        }
       ],
       "title": "Min Audio Rate"
+     },
+     "preserve_pauses": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preserve Pauses"
      },
      "video_slow_cap": {
       "anyOf": [
@@ -13245,6 +13269,64 @@
      }
     },
     "summary": "Dub Qc Pass"
+   }
+  },
+  "/dub/quality/{job_id}": {
+   "get": {
+    "description": "Inspect local artifacts without returning file paths or transcript text.",
+    "operationId": "dub_delivery_quality_dub_quality__job_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "job_id",
+      "required": true,
+      "schema": {
+       "title": "Job Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lang",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Lang"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Dub Delivery Quality Dub Quality  Job Id  Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Dub Delivery Quality"
    }
   },
   "/dub/segments-text/{job_id}": {

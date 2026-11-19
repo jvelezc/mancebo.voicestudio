@@ -139,7 +139,6 @@ def embedding_windows(regions):
 
 def cluster_embeddings(features, count=None):
     import numpy as np
-    from speechbrain.integrations.alignment.diarization import Spec_Clust_unorm
     from sklearn.cluster import KMeans
 
     if len(features) == 1:
@@ -157,9 +156,30 @@ def cluster_embeddings(features, count=None):
     # Spectral discovery has bounded quadratic memory. Every speech embedding
     # still participates in the final refinement; the tail is not discarded.
     selected = np.linspace(0, len(features) - 1, min(1024, len(features)), dtype=int)
-    cluster = Spec_Clust_unorm(min_num_spkrs=1, max_num_spkrs=min(20, len(selected)))
-    cluster.do_spec_clust(features[selected], k_oracle=count, p_val=0.3)
-    labels = np.asarray(cluster.labels_, dtype=int)
+    sampled = features[selected]
+    norms = np.linalg.norm(sampled, axis=1, keepdims=True)
+    if not np.isfinite(sampled).all() or np.any(norms <= 0):
+        raise ValueError("Speaker analysis returned invalid embeddings")
+    normalized = sampled / norms
+    # The upstream conversational recipe starts its eigengap search at the
+    # second eigenvalue and adds two: it cannot discover a single narrator.
+    # Keeping only 30% of neighbours also fragments short narrated clips. Use
+    # the complete nonnegative cosine graph and include the one-speaker gap.
+    affinity = np.maximum(normalized @ normalized.T, 0)
+    np.fill_diagonal(affinity, 0)
+    degrees = affinity.sum(axis=1)
+    scale = np.sqrt(np.outer(degrees, degrees))
+    normalized_affinity = np.divide(affinity, scale, out=np.zeros_like(affinity), where=scale > 0)
+    laplacian = np.diag((degrees > 0).astype(float)) - normalized_affinity
+    eigenvalues, eigenvectors = np.linalg.eigh(laplacian)
+    if count is None:
+        gaps = np.diff(eigenvalues[:min(20, len(selected) - 1) + 1])
+        if np.max(gaps, initial=0) <= 1e-8:
+            # Orthogonal/isolated windows provide no evidence of one identity.
+            count = min(20, len(selected))
+        else:
+            count = int(np.argmax(gaps)) + 1
+    labels = KMeans(n_clusters=count, n_init=10, random_state=0).fit_predict(eigenvectors[:, :count])
     centers = np.stack(
         [
             features[selected][labels == label].mean(axis=0)

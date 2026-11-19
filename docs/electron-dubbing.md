@@ -91,6 +91,19 @@ Fresh dub segments use the existing watermark worker before they enter recovery
 storage or the published track, keeping API requests responsive while marking runs.
 Recovered segments retain their existing mark and are not marked a second time.
 
+Hosted operators can explicitly set
+`VOICESTUDIO_DUB_CONTINUOUS_MUSIC=1` to keep the separated music/effects bed across
+the entire recording instead of switching back to the mixed source in dialogue
+gaps. For a changed video timeline this mode requires the absolute installed
+`VOICESTUDIO_RUBBERBAND_BIN` path. It uses one finer-quality Rubber Band process
+and the video's source/output landmarks for the entire bed, preserving processing
+state across sentence boundaries. A missing retimer, incomplete bed or mismatched
+duration blocks that export; it never substitutes silence or chopped music.
+This is opt-in; standalone background behavior stays unchanged. Separation can
+still remove or distort source sounds, so review the full soundtrack, especially
+music, applause and effects. A matching transcript does not establish natural
+pronunciation, accent, emotional delivery or voice identity.
+
 The backend remains responsible for separation, ASR, speaker cloning, translation,
 TTS, fitting, mixing and export. When the vocals were separated, each line starts on
 detected speech and ends after its last spoken sound (#3419): a sigh, breath, footstep

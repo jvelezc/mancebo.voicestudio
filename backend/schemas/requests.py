@@ -63,6 +63,8 @@ class FitOptions(BaseModel):
     # Default is the server's OMNIVOICE_UNDERRUN_MIN_RATE (0.85).
     min_audio_rate: Optional[float] = Field(default=None, ge=0.5, le=1.0, allow_inf_nan=False)
     allow_video_retime: Optional[bool] = None    # default True
+    preserve_pauses: Optional[bool] = None      # default False; leave every source pause intact
+    audio_only_rate_cap: Optional[float] = Field(default=None, ge=1, le=1.8, allow_inf_nan=False)
 
 class DubRequest(BaseModel):
     # An empty request has no speech to render; publishing it would replace

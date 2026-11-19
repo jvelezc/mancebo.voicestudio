@@ -114,6 +114,22 @@ def test_crashed_render_reuses_finished_segments(dub):
     assert not (dub.path / ".resume").exists()
 
 
+@pytest.mark.parametrize("change", ["unchanged", "model_changed", "unproven"])
+def test_managed_native_crash_reuses_only_speech_with_the_same_artifact_proof(dub, monkeypatch, change):
+    _, backend = asyncio.run(dub.dg._resolve_dub_execution())
+    proof = {"runtime_sha256": "a" * 64, "model_sha256": "b" * 64}
+    backend.resume_proof = lambda: None if change == "unproven" else dict(proof)
+    async def resolve():
+        return "qwen3-native", backend
+    monkeypatch.setattr(dub.dg, "_resolve_dub_execution", resolve)
+    _crash_after(dub, 2)
+    if change == "model_changed":
+        proof["model_sha256"] = "c" * 64
+    events = dub.run()
+    assert any(event["type"] == "done" for event in events)
+    assert [call["text"] for call in dub.generated] == (["line 2", "line 3"] if change == "unchanged" else ["line 0", "line 1", "line 2", "line 3"])
+
+
 def test_reused_segment_is_byte_identical_to_what_was_rendered(dub):
     _crash_after(dub, 2)
     recovered = (dub.journal / "seg_a.wav").read_bytes()

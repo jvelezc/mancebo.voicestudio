@@ -74,7 +74,8 @@ async def _preserved_background(job: dict, job_id: str, lang: str, *, prepare: b
     directory = os.path.join(_existing_job_dir_or_404(job_id), "exports")
     os.makedirs(directory, exist_ok=True)
     try:
-        return await surgical_background(source, bed, directory, segments, entry.get("plan") or [], float(entry.get("orig_duration") or job.get("duration") or 0))
+        options = {"continuous": True} if os.environ.get("VOICESTUDIO_DUB_CONTINUOUS_MUSIC") == "1" else {}
+        return await surgical_background(source, bed, directory, segments, entry.get("plan") or [], float(entry.get("orig_duration") or job.get("duration") or 0), **options)
     except (ValueError, RuntimeError) as exc:
         # The client shows localized recovery guidance for this code; keep the
         # concrete cause in the log so a diagnostic bundle explains it.
@@ -1736,6 +1737,42 @@ async def dub_preview_segment(job_id: str, segment_index: int, lang: str = Query
 # ── Second-pass ASR QC (Wave 3.3 / Spec 5) ───────────────────────────────────
 
 
+@router.get("/dub/quality/{job_id}")
+def dub_delivery_quality(job_id: str, lang: str | None = Query(None)) -> dict:
+    """Inspect local artifacts without returning file paths or transcript text."""
+    from services.dub_quality import background_ready, measure_audio, natural_pacing_ready
+
+    _existing_job_dir_or_404(job_id)
+    lang = _safe_lang_or_400(lang)
+    job = _get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    duration = float(job.get("duration") or 0)
+    bed = _optional_dub_artifact(job.get("no_vocals_path"), job_id)
+    try:
+        background = measure_audio(bed) if bed else None
+        result = {
+            "source_duration_seconds": duration,
+            "background_ready": background_ready(duration, background, job.get("background_separation")),
+            "background": background,
+            "natural_pacing_enforced": os.environ.get("VOICESTUDIO_DUB_NATURAL_PACING") == "1",
+        }
+        if lang is not None:
+            track = (job.get("dubbed_tracks") or {}).get(lang)
+            if not track:
+                raise HTTPException(status_code=409, detail={"code": "dub_track_missing"})
+            speech = measure_audio(_dub_artifact(track.get("path"), job_id))
+            plan = (job.get("fit_plans") or {}).get(lang) or {}
+            output_duration = float(plan.get("total_duration") or duration)
+            result["render_duration_seconds"] = output_duration
+            result["speech"] = speech
+            result["pacing_ready"] = natural_pacing_ready(plan.get("params") or {}, plan.get("delivery_segments") or [])
+            result["duration_ready"] = abs(speech["duration_seconds"] - output_duration) <= 0.1 and output_duration >= duration - 0.1
+        return result
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail={"code": "dub_quality_unreadable"}) from exc
+
+
 @router.post("/dub/qc/{job_id}")
 async def dub_qc_pass(job_id: str, lang: str = Query(None), drift_threshold: float = Query(0.5)):
     """Re-recognize the dubbed audio and flag lines whose recognized text
@@ -1792,9 +1829,10 @@ async def dub_qc_pass(job_id: str, lang: str = Query(None), drift_threshold: flo
         # `load_*`, not `get_*`: the plain selector returns engines whose
         # shallow probe passed but whose deep import chain is broken, which
         # then 500s at `.transcribe()`. The loader degrades (#1185).
-        from services.asr_backend import load_active_asr_backend
+        from services.asr_backend import load_active_asr_backend, transcribe_request_kwargs
         backend = load_active_asr_backend()
-        result = backend.transcribe(wav_path, word_timestamps=False)
+        options = transcribe_request_kwargs(backend, {"language": track_lang})
+        result = backend.transcribe(wav_path, word_timestamps=True, **options)
         return result.get("segments", []), backend.id
 
     try:

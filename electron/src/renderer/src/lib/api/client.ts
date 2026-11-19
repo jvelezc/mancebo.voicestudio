@@ -4,6 +4,7 @@ import { languageRejectionMessage } from "@shared/utils/languageRejection.ts";
  * bundle is served by FastAPI itself, whose routes live at the origin root. */
 import type { ApiErrorPayload } from "./types";
 import { tr } from "@/lib/i18n-text";
+import { studioMode } from "@/lib/managed-studio";
 import { getBackendStatusSnapshot } from "@/hooks/use-backend-status";
 import { isBackendReachable } from "@shared/utils/backendStage";
 import { recordBackendContact } from "@shared/utils/backendContact";
@@ -239,13 +240,21 @@ export async function apiFetch(
     if (__WEB_DEPLOYMENT__) {
       const apiBase = absoluteApiBase();
       const headers = new Headers(init?.headers);
+      const managed = studioMode().kind !== "standalone";
       let pin: string | null = null;
-      try {
-        pin = sessionStorage.getItem("ov_pin");
-      } catch {
-        // Cookie and bearer-session authentication still work when storage is blocked.
+      if (!managed) {
+        try {
+          pin = sessionStorage.getItem("ov_pin");
+        } catch {
+          // Cookie and bearer-session authentication still work when storage is blocked.
+        }
+        sentSession = getAdminSession(apiBase);
+      } else {
+        // Managed identity is the gateway's current-account cookie. Old native
+        // PINs and operator sessions are neither required nor forwarded.
+        headers.delete("Authorization");
+        headers.delete("X-OmniVoice-Pin");
       }
-      sentSession = getAdminSession(apiBase);
       if (pin) headers.set("X-OmniVoice-Pin", pin);
       if (sentSession)
         headers.set("Authorization", `Bearer ${sentSession.token}`);
@@ -263,7 +272,11 @@ export async function apiFetch(
     const error = await errorFromResponse(res);
     const detail = error.detail.toLowerCase();
     const adminGate = error.status === 403 && detail.includes("admin api key");
-    if (__WEB_DEPLOYMENT__ && (error.status === 401 || adminGate)) {
+    if (__WEB_DEPLOYMENT__ && studioMode().kind !== "standalone" &&
+        [401, 403].includes(error.status) && error.payload?.code === "STUDIO_ACCESS_REJECTED") {
+      window.dispatchEvent(new CustomEvent("ov:auth-required", { detail: { mode: "managed" } }));
+    }
+    if (__WEB_DEPLOYMENT__ && studioMode().kind === "standalone" && (error.status === 401 || adminGate)) {
       const mode = detail.includes("api key") ? "apikey" : "pin";
       const currentSession = getAdminSession(absoluteApiBase());
       const staleResponse =
