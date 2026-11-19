@@ -53,10 +53,10 @@ _PERFORMANCE_TARGETS = {
         for tier, width in zip(_PERFORMANCE_TIERS, (1, 3, 5, 8))
     },
     "dictation": {
-        "fast": {"decoding_method": "greedy_search", "max_active_paths": 1, "engine": "sherpa-onnx"},
-        "balanced": {"decoding_method": "greedy_search", "max_active_paths": 4, "engine": "sherpa-onnx"},
-        "quality": {"decoding_method": "modified_beam_search", "max_active_paths": 4, "engine": "sherpa-onnx"},
-        "max": {"decoding_method": "modified_beam_search", "max_active_paths": 8, "engine": "sherpa-onnx"},
+        "fast": {"decoding_method": "greedy_search", "max_active_paths": 1, "engine": "speechbrain-ecapa"},
+        "balanced": {"decoding_method": "greedy_search", "max_active_paths": 4, "engine": "speechbrain-ecapa"},
+        "quality": {"decoding_method": "modified_beam_search", "max_active_paths": 4, "engine": "speechbrain-ecapa"},
+        "max": {"decoding_method": "modified_beam_search", "max_active_paths": 8, "engine": "speechbrain-ecapa"},
     },
     "diarisation": {
         "fast": {"engine": "audiocpp-sortformer"},
@@ -252,7 +252,7 @@ def _activate_dictation_model(tier: str) -> dict | None:
     from services import asr_backend
 
     snapshot = selection_snapshot("dictation")
-    if os.environ.get("OMNIVOICE_SHERPA_ASR_MODEL"):
+    if os.environ.get("OMNIVOICE_SPEECHBRAIN_ASR_MODEL"):
         return None
     if not package_available("sherpa_onnx"):
         return None
@@ -415,11 +415,7 @@ def profile_state(choice: str | None = None) -> dict:
             "engine": diarization_runtime.selected_backend()
             if diarisation_choices
             else "inactive",
-            "model": (
-                diarization_runtime.SORTFORMER_REPO
-                if diarization_runtime.selected_backend() == diarization_runtime.SORTFORMER
-                else "pyannote/speaker-diarization-3.1"
-            )
+            "model": diarization_runtime.selected_model_id()
             if diarisation_choices
             else None,
         },
@@ -508,7 +504,7 @@ def activate_performance_tier(tier: str, family: str | None = None) -> dict:
             engine = _PERFORMANCE_TARGETS["diarisation"][tier]["engine"]
             if engine in installed:
                 diarization_runtime.select_backend(engine)
-                if engine == diarization_runtime.SORTFORMER:
+                if engine in {diarization_runtime.SORTFORMER, diarization_runtime.SPEECHBRAIN}:
                     from services import model_manager
 
                     model_manager.unload_diarization_pipeline()
@@ -554,7 +550,7 @@ def _activate_budgeted_profile(tier: str) -> dict:
             elif family == "diarisation":
                 if diarization_runtime.selected_backend() != engine:
                     diarization_runtime.select_backend(engine)
-                if engine == diarization_runtime.SORTFORMER:
+                if engine in {diarization_runtime.SORTFORMER, diarization_runtime.SPEECHBRAIN}:
                     from services import model_manager
                     model_manager.unload_diarization_pipeline()
             activated[family] = selected

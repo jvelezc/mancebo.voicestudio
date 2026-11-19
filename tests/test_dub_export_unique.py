@@ -108,6 +108,45 @@ def _fake_ffmpeg_factory(write_file: bool = True):
 _SUBPROC_ATTR = "create_subprocess_" + "exec"  # dodge overzealous code-scan hooks
 
 
+@pytest.mark.skipif(
+    shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None,
+    reason="ffmpeg and ffprobe are required for the video-tail regression",
+)
+@pytest.mark.parametrize("endpoint", ["download", "preview-video"])
+@pytest.mark.parametrize("managed", [False, True])
+def test_managed_video_keeps_silent_source_tail_without_changing_standalone(app_client, monkeypatch, endpoint, managed):
+    client, dc, _dx, tmp = app_client
+    if managed:
+        monkeypatch.setenv("VOICESTUDIO_PRESERVE_FULL_VIDEO", "1")
+    else:
+        monkeypatch.delenv("VOICESTUDIO_PRESERVE_FULL_VIDEO", raising=False)
+    job_id, directory = _seed_job_with_tracks(dc, tmp)
+    source = directory / "original.mp4"
+    subprocess.run([
+        shutil.which("ffmpeg"), "-nostdin", "-v", "error", "-f", "lavfi", "-i",
+        "color=c=blue:s=160x90:r=25:d=3", "-f", "lavfi", "-i",
+        "sine=frequency=440:sample_rate=16000:duration=1", "-c:v", "libx264",
+        "-pix_fmt", "yuv420p", "-c:a", "aac", "-y", str(source),
+    ], check=True, capture_output=True, timeout=30)
+    _make_wav(directory / "dubbed_es.wav", seconds=1)
+    dc._dub_jobs[job_id]["duration"] = 3.0
+    if managed and endpoint == "preview-video":
+        # An older worker may already have cached a preview that cuts the tail.
+        with monkeypatch.context() as legacy:
+            legacy.delenv("VOICESTUDIO_PRESERVE_FULL_VIDEO", raising=False)
+            assert client.get(f"/dub/preview-video/{job_id}", params={"preserve_bg": False, "lang": "es"}).status_code == 200
+    response = client.get(f"/dub/{endpoint}/{job_id}", params={"preserve_bg": False, "include_tracks": "es", "default_track": "es", "lang": "es"})
+    assert response.status_code == 200, response.text
+    output = directory / "verified-tail.mp4"
+    output.write_bytes(response.content)
+    checked = subprocess.run([shutil.which("ffprobe"), "-v", "error", "-show_entries", "format=duration", "-of", "json", str(output)], check=True, capture_output=True, text=True, timeout=10)
+    duration = float(json.loads(checked.stdout)["format"]["duration"])
+    if managed:
+        assert duration >= 2.95, "Silent source video after the final spoken line was cut off"
+    else:
+        assert duration < 2.0, "Standalone export behavior changed without opt-in"
+
+
 class TestDubExportUniqueness:
     def test_media_head_reports_native_type_without_body(self, app_client):
         client, dc, _dx, tmp = app_client

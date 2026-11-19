@@ -114,7 +114,7 @@ def profile_plan(choice: str, overrides: dict, selections: dict) -> dict:
                                         vram if ct2_gpu and backend != "mlx-whisper" else 0))
             inventory["asr"] = models
 
-    if os.environ.get("OMNIVOICE_SHERPA_ASR_MODEL") or not prefs.get("dictation.enabled", True):
+    if os.environ.get("OMNIVOICE_SPEECHBRAIN_ASR_MODEL") or not prefs.get("dictation.enabled", True):
         if "dictation" in current:
             fixed["dictation"] = current["dictation"]
     elif package_available("sherpa_onnx"):
@@ -152,6 +152,7 @@ def profile_plan(choice: str, overrides: dict, selections: dict) -> dict:
             Candidate(engine, repo, rank, ram, vram if dedicated else 0)
             for engine, repo, rank, ram, vram in [
                 (diarization_runtime.SORTFORMER, diarization_runtime.SORTFORMER_REPO, 1, 1.5, 1.5),
+                (diarization_runtime.SPEECHBRAIN, "speechbrain/spkrec-ecapa-voxceleb", 2, 1.5, 0),
                 (diarization_runtime.PYANNOTE, "pyannote/speaker-diarization-3.1", 4, 2, 2),
             ] if engine in installed
         ]

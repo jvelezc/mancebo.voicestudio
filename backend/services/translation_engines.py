@@ -420,6 +420,59 @@ def _configure_argos_cache() -> None:
     os.environ.setdefault("ARGOS_DATA_DIR", argos_cache)
 
 
+def translate_argos(text: str, source: str, target: str) -> str:
+    """Opt-in installed-only tokenizers for managed read-only model mounts.
+
+    Ordinary desktop translation retains Argos's existing install behavior.
+    Configure each selected translation object, not the global Stanza module.
+    Missing resources fail rather than downloading on a customer request.
+    """
+    managed = os.environ.get("VOICESTUDIO_ARGOS_OFFLINE") == "1"
+    if managed:
+        # Argos INFO diagnostics include source sentences and translated output.
+        # Managed workers retain warning/error signals without logging scripts.
+        logging.getLogger("argostranslate.utils").setLevel(logging.WARNING)
+    import argostranslate.translate as runtime
+
+    if not managed:
+        return runtime.translate(text, source, target)
+    if source == target:
+        return text
+    import argostranslate.sbd as sbd
+    import stanza
+
+    translation = runtime.get_translation_from_codes(source, target)
+    seen = set()
+
+    def prepare(node):
+        if id(node) in seen:
+            return
+        if len(seen) >= 32:
+            raise RuntimeError("The installed translation chain is invalid")
+        seen.add(id(node))
+        tokenizer = getattr(node, "sentencizer", None)
+        if tokenizer is not None:
+            if not isinstance(tokenizer, sbd.StanzaSentencizer):
+                raise RuntimeError("This managed translation tokenizer is not qualified")
+            if tokenizer.stanza_pipeline is None:
+                tokenizer.stanza_pipeline = stanza.Pipeline(
+                    lang=tokenizer.stanza_lang_code,
+                    dir=str(tokenizer.pkg.package_path / "stanza"),
+                    processors="tokenize", use_gpu=False,
+                    logging_level="WARNING", download_method=None,
+                )
+            return
+        children = [getattr(node, key) for key in ("underlying", "t1", "t2")
+                    if getattr(node, key, None) is not None]
+        if not children:
+            raise RuntimeError("This managed translation chain is not qualified")
+        for child in children:
+            prepare(child)
+
+    prepare(translation)
+    return translation.translate(text)
+
+
 def argos_pack_status(source_lang: str, target_langs: list[str]) -> dict:
     """Report installed Argos pairs without refreshing the remote index."""
     _configure_argos_cache()
