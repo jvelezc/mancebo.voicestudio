@@ -78,6 +78,19 @@ class FitParams:
     # (pitch-preserving), never below this rate — 0.85× stays comfortably
     # natural-sounding. 1.0 disables the fill entirely.
     min_audio_rate: float = 0.85
+    # Hosted natural pacing is explicit opt-in; the standalone planner keeps
+    # its established slack absorption and 1.8x audio-only ceiling.
+    preserve_pauses: bool = False
+    audio_only_rate_cap: float = MAX_AUDIO_RATE_HARD
+
+
+def natural_pacing_params() -> FitParams:
+    """Preserve source pauses and video timing; flag lines needing a rewrite."""
+    return FitParams(
+        max_audio_only_rate=1.1, audio_rate_cap=1.1, video_slow_cap=1.0,
+        gap_guard_s=0.0, allow_video_retime=False, min_audio_rate=1.0,
+        preserve_pauses=True, audio_only_rate_cap=1.1,
+    )
 
 
 @dataclass
@@ -121,10 +134,13 @@ def _fit_one(need: float, params: FitParams) -> tuple[float, float, str]:
         if need > _EPS and need < UNDERRUN_TOLERANCE and params.min_audio_rate < 1.0 - _EPS:
             return max(need, params.min_audio_rate), 1.0, "audio_slowed"
         return 1.0, 1.0, "fits"
-    if need <= params.max_audio_only_rate + _EPS:
+    audio_only_threshold = params.max_audio_only_rate if params.allow_video_retime else min(
+        params.max_audio_only_rate, params.audio_only_rate_cap,
+    )
+    if need <= audio_only_threshold + _EPS:
         return need, 1.0, "audio_stretched"
     if not params.allow_video_retime:
-        audio_rate = min(need, MAX_AUDIO_RATE_HARD)
+        audio_rate = min(need, params.audio_only_rate_cap)
         status = "audio_stretched" if audio_rate >= need - _EPS else "overflow_trimmed"
         return audio_rate, 1.0, status
     # Geometric 50/50 split: equal perceptual burden on audio and video.
@@ -235,7 +251,9 @@ def plan_fit(
 
         # (a) Slack absorption. Extend-only: the slot never shrinks below
         # the original [start, end] even when segments are back-to-back.
-        if i + 1 < n:
+        if params.preserve_pauses:
+            effective_end = end
+        elif i + 1 < n:
             next_start = float(segments[i + 1]["start"])
             effective_end = max(end, next_start - params.gap_guard_s)
             # Never bleed past the next segment's onset (overlapping or

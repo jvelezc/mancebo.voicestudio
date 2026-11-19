@@ -19,7 +19,7 @@ from core.config import DUB_DIR, VOICES_DIR, dub_seg_path
 from core.path_security import contained_join
 from core.logging_utils import log_safe
 from core.tasks import task_manager
-from schemas.requests import DubRequest
+from schemas.requests import DubRequest, FitOptions
 from services.model_manager import _gpu_pool, await_free_engine, run_on_gpu_pool_guarded
 from services.srt_parser import vouch_cue_source
 from services.tts_backend import (
@@ -40,7 +40,7 @@ from services.ffmpeg_utils import (
 )
 from services.rvc import apply_rvc, is_enabled as rvc_is_enabled
 from services.incremental import segment_fingerprint, fit_fingerprint
-from services.fit_planner import FitParams, plan_fit
+from services.fit_planner import FitParams, natural_pacing_params, plan_fit
 from services.watermark import mark_synthetic, mark_synthetic_async, will_mark
 from services import dub_pipeline, dub_resume
 from services.speaker_clone import auto_profile_id
@@ -56,6 +56,17 @@ from services.dub_pipeline import (
 from omnivoice.utils.voice_design import heal_design_instruct
 
 logger = logging.getLogger("omnivoice.dub")
+
+
+def _managed_pacing_request(req: DubRequest) -> DubRequest:
+    """Bind hosted dubbing to natural pace before cache keys or TTS admission."""
+    if os.environ.get("VOICESTUDIO_DUB_NATURAL_PACING") != "1":
+        return req
+    from dataclasses import asdict
+    return req.model_copy(update={
+        "timing_strategy": "smart_fit", "speed": 1.0,
+        "fit_options": FitOptions(**asdict(natural_pacing_params())),
+    })
 
 def _validate_render_languages(backend, req, seg_ids, regen_only, spoken_texts):
     """Validate the final local render set, including repaired cache misses."""
@@ -534,6 +545,7 @@ async def _run_journal_io(operation, *args):
 @consumer_generation
 async def dub_generate(job_id: str, req: DubRequest):
     """Adds a dub generation job to the async batch task pool."""
+    req = _managed_pacing_request(req)
     # The track language names files under the job dir (dubbed_{lang}.wav,
     # seg_{lang}_{id}.wav), so reject anything that is not a plain code
     # before the job is touched.
@@ -1912,6 +1924,8 @@ async def dub_generate(job_id: str, req: DubRequest):
                     if _fo is not None and _fo.min_audio_rate is not None
                     else _underrun_min_rate()
                 ),
+                preserve_pauses=bool(_fo.preserve_pauses) if _fo is not None and _fo.preserve_pauses is not None else _fit_defaults.preserve_pauses,
+                audio_only_rate_cap=float(_fo.audio_only_rate_cap) if _fo is not None and _fo.audio_only_rate_cap is not None else _fit_defaults.audio_only_rate_cap,
             )
             plan_segments = [
                 {
@@ -1991,6 +2005,9 @@ async def dub_generate(job_id: str, req: DubRequest):
                     })
                 elif strategy == "smart_fit":
                     planned = fit_plan.segments[i]
+                    if fit_params.preserve_pauses and planned.overflow_s > 1 / sr:
+                        yield f"data: {json.dumps({'type': 'error', 'segment': i, 'segment_id': seg_order[i], 'error_code': 'dub_timing_overflow', 'error': 'Shorten this translated line to preserve the source pause and natural speech speed.'})}\n\n"
+                        return
                     place_at = planned.new_start
                     if abs(planned.audio_rate - 1.0) > 1e-6 and wl > 0:
                         target = max(1, round(wl / planned.audio_rate))
@@ -2173,6 +2190,10 @@ async def dub_generate(job_id: str, req: DubRequest):
                         "allow_video_retime": fit_params.allow_video_retime,
                         "min_audio_rate": fit_params.min_audio_rate,
                     }
+                    if fit_params.preserve_pauses:
+                        _fit_params_payload["preserve_pauses"] = True
+                    if fit_params.audio_only_rate_cap != _fit_defaults.audio_only_rate_cap:
+                        _fit_params_payload["audio_only_rate_cap"] = fit_params.audio_only_rate_cap
                     fit_fp = fit_fingerprint(_fit_params_payload)
                     job.setdefault("fit_plans", {})[lang_code] = {
                         # Same dict shape _build_video_stretch_filter_graph consumes.
@@ -2185,6 +2206,14 @@ async def dub_generate(job_id: str, req: DubRequest):
                         "params": _fit_params_payload,
                         "fit_fp": fit_fp,
                     }
+                    if fit_params.preserve_pauses:
+                        job["fit_plans"][lang_code]["delivery_segments"] = [
+                            {"audio_rate": part.audio_rate, "video_ratio": part.video_ratio,
+                             "overflow_s": part.overflow_s, "start": part.new_start,
+                             "end": part.new_end, "source_start": part.orig_start,
+                             "source_end": part.orig_end}
+                            for part in fit_plan.segments
+                        ]
                     job["dubbed_tracks"][lang_code]["fit_fp"] = fit_fp
                 # Every new cache preserves natural speech. Old slotted caches must
                 # be regenerated once because their missing tails cannot be recovered.

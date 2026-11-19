@@ -122,6 +122,24 @@ def test_global_clustering_preserves_same_voice_before_and_after_long_silence(
         )
 
 
+def test_automatic_clustering_can_discover_a_single_narrator():
+    random = np.random.default_rng(36)
+    base = random.normal(size=192)
+    features = np.array([base + random.normal(scale=.4, size=192) for _ in range(17)])
+    features /= np.linalg.norm(features, axis=1, keepdims=True)
+    assert subject.cluster_embeddings(features).tolist() == [0] * 17
+
+
+def test_automatic_clustering_keeps_two_distinct_voices_in_first_appearance_order():
+    random = np.random.default_rng(46)
+    first = random.normal(size=192)
+    second = random.normal(size=192)
+    features = np.array([voice + random.normal(scale=.05, size=192) for voice in [first] * 6 + [second] * 6 + [first] * 6])
+    features /= np.linalg.norm(features, axis=1, keepdims=True)
+    labels = subject.cluster_embeddings(features).tolist()
+    assert labels == [0] * 6 + [1] * 6 + [0] * 6
+
+
 def test_embedding_checkpoint_reuses_verified_vector_and_recomputes_corruption(
     installed, tmp_path, monkeypatch
 ):

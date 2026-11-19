@@ -1603,6 +1603,13 @@ async def _separate_background(job_id: str, audio_in: str, job_dir: str, *, path
         kw = {"deadline": started + _DEMUCS_TOTAL_BUDGET_S} if index else {}
         cmd = [sys.executable, "-m", "demucs.separate", "--two-stems", "vocals",
                "-n", "htdemucs", "-d", dev, *extra, audio_in, "-o", job_dir]
+        local_models = os.environ.get("VOICESTUDIO_DEMUCS_MODELS_DIR")
+        if local_models:
+            # Managed workers are provisioned ahead of time. No customer task
+            # downloads executable model state from the network.
+            if not os.path.isfile(os.path.join(local_models, "htdemucs.yaml")):
+                raise RuntimeError("The background separation model is not provisioned")
+            cmd[3:3] = ["--repo", local_models]
         rc, stderr_full, last_pct = -1, b"", -1
         # demucs writes a tqdm progress bar to stderr as "  42%|████ …" — surface
         # each new integer percent so the UI shows a bar, not a static spinner.

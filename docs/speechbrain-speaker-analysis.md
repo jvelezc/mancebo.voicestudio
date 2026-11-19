@@ -85,6 +85,39 @@ similarity are separately verified stages. Model boundaries, CPU/memory/disk
 capacity and the worker deadline remain operational constraints; do not return
 partial output as a complete recording.
 
+Automatic discovery uses a normalized, nonnegative cosine-affinity graph and
+includes the first eigenvalue gap, so one narrator is a valid result. The
+conversational SpeechBrain recipe's automatic count starts at two speakers;
+using it unchanged also fragmented short narration into many tiny references.
+All speech windows still participate in refinement. Speaker count remains an
+estimate requiring review, particularly for overlapping or very short speech.
+
+## Managed delivery checks
+
+`VOICESTUDIO_DUB_NATURAL_PACING=1` opts the managed worker into source-pause
+preservation, no video retiming and at most 10% speech acceleration. An overlong
+translation fails instead of publishing clipped speech or consuming the next
+pause. Review and shorten the wording, then regenerate the changed lines.
+Standalone fitting defaults and existing default cache fingerprints are unchanged.
+
+Install the reviewed Demucs `htdemucs` model before customer execution and set
+`VOICESTUDIO_DEMUCS_MODELS_DIR` to its read-only directory. It must contain
+`htdemucs.yaml` and `955717e8-8726e21a.th`; the qualification checkpoint SHA-256 is
+`8726e21a993978c7ba086d3872e7608d7d5bfca646ca4aca459ffda844faa8b4` (84,141,911 bytes).
+Record the [publisher's model manifest](https://github.com/facebookresearch/demucs/blob/main/demucs/remote/htdemucs.yaml)
+and [MIT license](https://github.com/facebookresearch/demucs/blob/main/LICENSE).
+Managed tasks use the local repository instead of downloading model state.
+
+`GET /dub/quality/{project}?lang=es` checks validated, project-owned artifacts
+without returning paths or transcript text: full source/stem duration, independent
+dry-narration audibility and persisted actual fitting evidence. A silent music
+stem is valid for speech-only sources; a loud music stem cannot satisfy the
+narration check. The Mancebo gateway refuses incomplete separation, missing
+policy, rushed/overflowing lines, missing narration and incomplete duration.
+Its audio and video exports explicitly preserve the background bed. Listening
+review and the optional second-pass ASR QC remain separate from these structural
+checks; they do not certify pronunciation, emotion or clinical correctness.
+
 ## Managed translation with read-only models
 
 Set `VOICESTUDIO_ARGOS_OFFLINE=1` only after installing the selected Argos
