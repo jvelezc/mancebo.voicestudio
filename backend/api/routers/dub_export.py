@@ -74,7 +74,8 @@ async def _preserved_background(job: dict, job_id: str, lang: str, *, prepare: b
     directory = os.path.join(_existing_job_dir_or_404(job_id), "exports")
     os.makedirs(directory, exist_ok=True)
     try:
-        return await surgical_background(source, bed, directory, segments, entry.get("plan") or [], float(entry.get("orig_duration") or job.get("duration") or 0))
+        options = {"continuous": True} if os.environ.get("VOICESTUDIO_DUB_CONTINUOUS_MUSIC") == "1" else {}
+        return await surgical_background(source, bed, directory, segments, entry.get("plan") or [], float(entry.get("orig_duration") or job.get("duration") or 0), **options)
     except (ValueError, RuntimeError) as exc:
         # The client shows localized recovery guidance for this code; keep the
         # concrete cause in the log so a diagnostic bundle explains it.

@@ -9,7 +9,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from services.ffmpeg_utils import find_ffmpeg, run_ffmpeg
+from services.ffmpeg_utils import find_ffmpeg, run_ffmpeg, spawn_subprocess
 from services.video_retime import expand_retime_chunks
 
 RATE = 48000
@@ -115,7 +115,53 @@ async def _checked(cmd: list[str]) -> None:
         raise RuntimeError('Could not preserve original background audio: ' + str(error)[-500:])
 
 
-async def surgical_background(source: str, separated: str, cache_dir: str, segments: list[dict], plan: list[dict], duration: float) -> str:
+def music_time_map(chunks: list[tuple[float, float, float]], rate: int) -> tuple[str, float]:
+    """One continuous source-to-output map, shared with the video timeline."""
+    points = [(0, 0)]
+    cursor = 0.0
+    previous_end = 0.0
+    for start, end, ratio in chunks:
+        if (not all(math.isfinite(value) for value in (start, end, ratio))
+                or abs(start-previous_end) > 1e-6 or end <= start or ratio <= 0):
+            raise ValueError('Invalid continuous background timeline')
+        cursor += (end-start)*ratio
+        frame = (round(end*rate), round(cursor*rate))
+        if frame[0] <= points[-1][0] or frame[1] <= points[-1][1]:
+            raise ValueError('Background timeline is shorter than one sample')
+        points.append(frame)
+        previous_end = end
+    if len(points) < 2:
+        raise ValueError('Continuous background timeline is empty')
+    return ''.join(f'{source} {target}\n' for source, target in points), cursor
+
+
+def _music_retimer() -> Path:
+    configured = Path(os.environ.get('VOICESTUDIO_RUBBERBAND_BIN', ''))
+    if not configured.is_absolute() or not configured.is_file() or not os.access(configured, os.X_OK):
+        raise ValueError('Continuous music retiming requires the configured Rubber Band executable')
+    return configured.resolve()
+
+
+async def _retime_music(binary: Path, source: str, output: str, time_map: Path, duration: float) -> None:
+    """Keep one stretcher alive across cue boundaries; kill and reap on abort."""
+    with tempfile.TemporaryFile() as errors:
+        process = await spawn_subprocess(str(binary), '--fine', '--quiet', '--duration',
+            f'{duration:.9f}', '--timemap', str(time_map), source, output,
+            stdout=asyncio.subprocess.DEVNULL, stderr=errors)
+        try:
+            await asyncio.wait_for(process.wait(), timeout=1800.0)
+            if process.returncode:
+                raise RuntimeError('Continuous background retiming failed')
+        finally:
+            if process.returncode is None:
+                try:
+                    process.kill()
+                except ProcessLookupError:
+                    pass
+                await asyncio.wait_for(process.wait(), timeout=5.0)
+
+
+async def surgical_background(source: str, separated: str, cache_dir: str, segments: list[dict], plan: list[dict], duration: float, *, continuous: bool = False) -> str:
     # Only entries that span time are rendered (expand_retime_chunks drops the
     # rest), so a zero-length cue's meaningless ratio must not fail the export.
     for chunk in plan:
@@ -125,8 +171,12 @@ async def surgical_background(source: str, separated: str, cache_dir: str, segme
         if not math.isfinite(ratio) or ratio <= 0:
             raise ValueError("Invalid background retiming ratio")
     intervals = dialogue_intervals(segments)
+    retimes = any(float(p['orig_end']) > float(p['orig_start'])
+                  and abs(float(p['stretch_ratio'])-1) > 1e-6 for p in plan)
+    tool = _music_retimer() if continuous and retimes else None
+    tool_identity = (str(tool), tool.stat().st_size, tool.stat().st_mtime_ns) if tool else None
     identity = [(p, os.stat(p).st_size, os.stat(p).st_mtime_ns) for p in (source, separated)]
-    key = hashlib.sha256(json.dumps([2, identity, intervals, plan, duration], sort_keys=True).encode()).hexdigest()[:24]
+    key = hashlib.sha256(json.dumps([3, identity, intervals, plan, duration, continuous, tool_identity], sort_keys=True).encode()).hexdigest()[:24]
     target = str(Path(cache_dir) / f'surgical_{key}.wav')
     async with _locks.setdefault(target, asyncio.Lock()):
         if os.path.isfile(target):
@@ -134,13 +184,31 @@ async def surgical_background(source: str, separated: str, cache_dir: str, segme
         ffmpeg = find_ffmpeg()
         with tempfile.TemporaryDirectory(prefix='.surgical-', dir=cache_dir) as tmp:
             original, bed, spliced = [str(Path(tmp)/name) for name in ('source.wav', 'bed.wav', 'spliced.wav')]
+            if continuous:
+                # A music/effects bed stays separated for the ENTIRE recording.
+                # Never switch to the louder mixed source between dialogue cues.
+                import soundfile as sf
+                await _checked([ffmpeg, '-y', '-i', separated, '-vn', '-ar', str(RATE), '-ac', '2', '-c:a', 'pcm_f32le', bed])
+                if not math.isfinite(duration) or duration <= 0 or abs(sf.info(bed).duration-duration) > .1:
+                    raise ValueError('Separated background is incomplete')
+                if tool:
+                    mapping, output_duration = music_time_map(expand_retime_chunks(plan, duration), RATE)
+                    time_map = Path(tmp)/'music-time-map.txt'
+                    time_map.write_text(mapping, encoding='ascii')
+                    await _retime_music(tool, bed, spliced, time_map, output_duration)
+                    if abs(sf.info(spliced).duration-output_duration) > .1:
+                        raise ValueError('Continuous background duration does not match the video')
+                else:
+                    spliced = bed
+                os.replace(spliced, target)
+                return target
             for inp, out in ((source, original), (separated, bed)):
                 # Default stream selection, like the extraction the bed was
                 # separated from: a forced first track (-map 0:a:0) could pick
                 # a different stream than the one Demucs saw.
                 await _checked([ffmpeg, '-y', '-i', inp, '-vn', '-ar', str(RATE), '-ac', '2', '-c:a', 'pcm_f32le', out])
             await asyncio.to_thread(splice_background, original, bed, spliced, intervals)
-            if plan and any(abs(float(p['stretch_ratio'])-1) > 1e-6 for p in plan):
+            if retimes:
                 chunks = expand_retime_chunks(plan, duration)
                 # Bound filter buffering for long projects; trim each batch's
                 # input before splitting it among the chunk filters.
