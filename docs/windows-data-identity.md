@@ -12,6 +12,13 @@ unknown after 200/500 ms while another legitimate creator was still publishing.
 The concurrent-startup test therefore sometimes contained both a UUID and an
 unknown result; a set of size two alone did not establish two generated UUIDs.
 
+A second publication transition is handled independently: an initial open can
+report missing just before another creator publishes the complete file. If the
+subsequent no-follow existence check finds a regular file, the reader retries
+the complete verified read within the same deadline. It does not return the
+stale missing-file error or follow a link. A deterministic regression reproduces
+this race even when the longer contention deadline is already installed.
+
 The deadline remains bounded. Invalid, oversized, inaccessible or linked
 metadata, a changed root, and an unresolved stale creator lock still leave the
 identity unknown. Do not replace this with a path-derived identifier or delete
