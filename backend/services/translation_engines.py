@@ -431,8 +431,6 @@ def translate_argos(text: str, source: str, target: str) -> str:
     if managed:
         # Argos INFO diagnostics include source sentences and translated output.
         # Managed workers retain warning/error signals without logging scripts.
-        import logging
-
         logging.getLogger("argostranslate.utils").setLevel(logging.WARNING)
     import argostranslate.translate as runtime
 
