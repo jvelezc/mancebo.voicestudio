@@ -1,0 +1,47 @@
+name: VoiceStudio upstream drift
+
+on:
+  schedule:
+    - cron: '23 15 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    if: github.repository == 'jvelezc/mancebo.voicestudio' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compare fork main with upstream main
+        shell: bash
+        run: |
+          git fetch --no-tags https://github.com/debpalash/VoiceStudio.git main
+          upstream=$(git rev-parse FETCH_HEAD)
+          fork=$(git rev-parse HEAD)
+          base=$(git merge-base "$fork" "$upstream")
+          missing=$(git rev-list --count "$fork..$upstream")
+          {
+            echo "### VoiceStudio upstream comparison"
+            echo
+            echo "Fork: `$fork`"
+            echo
+            echo "Upstream: `$upstream`"
+            echo
+            echo "Upstream commits awaiting review: $missing"
+            if [[ "$missing" != 0 ]]; then
+              echo
+              echo "[Review the upstream changes](https://github.com/debpalash/VoiceStudio/compare/$base...$upstream)"
+              echo
+              echo "[Open the Mancebo sync runbook](https://github.com/jvelezc/mancebo.voicestudio/blob/main/docs/mancebo-upstream-sync.md)"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$missing" != 0 ]]; then
+            echo "::error::$missing upstream commit(s) awaiting a Mancebo sync pull request."
+            exit 1
+          fi
