@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { isMac } from '@/components/bridge';
+import { studioMode, studioWorkspaceUrl } from '@/lib/managed-studio';
 
 /**
  * True when a page's own pane is titled exactly like the page, so the pane
@@ -19,6 +20,7 @@ export function paneTitleInShell(row: HTMLElement, title: string): boolean {
 
 export function WorkspaceHeader({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
+  const mode = studioMode();
   return (
     <header
       data-slot="workspace-header"
@@ -40,7 +42,17 @@ export function WorkspaceHeader({ children }: { children: ReactNode }) {
         {children}
       </div>
       <div className="flex shrink-0 items-center gap-0.5">
-        <SupportShortcut />
+        {mode.kind === 'managed' ? (
+          <a
+            href={studioWorkspaceUrl(mode.studio)}
+            target="_top"
+            className="rounded px-2 text-xs text-primary underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {t('managedStudio.productName')}
+          </a>
+        ) : (
+          <SupportShortcut />
+        )}
         <Button
           variant="ghost"
           size="sm"

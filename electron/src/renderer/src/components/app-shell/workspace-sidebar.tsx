@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { PanelLeftIcon, PanelLeftOpenIcon, SettingsIcon } from 'lucide-react';
-import { brandIcon, brandArtwork } from '@/lib/brand';
+import { brandIcon, brandArtwork, manceboBrandIcon } from '@/lib/brand';
+import { studioMode } from '@/lib/managed-studio';
 import { appVersion, isMac } from '@/components/bridge';
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { useWorkspace } from '@/lib/store/workspace';
 import { useWorkspaceSidebarState } from './use-workspace-sidebar';
 import { WorkspaceNavigation } from './workspace-menu';
 import { StatusBar } from './status-bar';
+import { ManagedStudioSource } from '@/components/managed-studio-source';
 
 export function versionTranslationKey(development: boolean) {
   return development ? ('app.version_dev' as const) : ('app.version' as const);
@@ -19,6 +21,9 @@ export function versionTranslationKey(development: boolean) {
 
 export function WorkspaceSidebar() {
   const { t } = useTranslation();
+  const managed = studioMode().kind === 'managed';
+  const productName = t(managed ? 'managedStudio.productName' : 'app.name');
+  const icon = managed ? manceboBrandIcon : brandIcon;
   const mac = isMac();
   // Fullscreen hides the traffic lights, so their reserved corner is given back to the brand.
   const trafficLights = mac && !useWindowFullscreen();
@@ -73,7 +78,7 @@ export function WorkspaceSidebar() {
               className="group/rail relative"
             >
               <img
-                src={brandIcon}
+                src={icon}
                 alt=""
                 data-slot="rail-brand"
                 className="size-5 transition-opacity duration-150 group-hover/rail:opacity-0 group-focus-visible/rail:opacity-0 motion-reduce:transition-none"
@@ -108,6 +113,7 @@ export function WorkspaceSidebar() {
               />
             </Link>
             {mac && <StatusBar compact inline />}
+            <ManagedStudioSource compact />
           </div>
         </aside>
       )}
@@ -115,7 +121,7 @@ export function WorkspaceSidebar() {
         <aside
           ref={sidebarResize.host}
           style={{ width: sidebarResize.width }}
-          aria-label={t('app.name')}
+          aria-label={productName}
           className="brand-sidebar relative isolate grid h-full min-h-0 min-w-0 shrink-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden border-r border-border/50 bg-sidebar"
         >
           <img
@@ -133,16 +139,16 @@ export function WorkspaceSidebar() {
           >
             <Link
               to="/"
-              aria-label={`${t('app.name')} ${versionLabel}`}
+              aria-label={managed ? productName : `${productName} ${versionLabel}`}
               className="flex min-w-0 flex-1 items-center gap-2 rounded outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <img src={brandIcon} alt="" className="size-6 shrink-0" />
+              <img src={icon} alt="" className="size-6 shrink-0" />
               <span className="flex min-w-0 flex-col leading-tight">
                 <span className="truncate text-[15px] font-semibold tracking-tight">
-                  {t('app.name')}
+                  {productName}
                 </span>
                 <span className="mt-0.5 truncate text-[11px] leading-none text-muted-foreground tabular-nums">
-                  {versionLabel}
+                  {managed ? t('managedStudio.studioTitle') : versionLabel}
                 </span>
               </span>
             </Link>
@@ -159,13 +165,14 @@ export function WorkspaceSidebar() {
           </header>
           <div
             {...sidebarResize.separatorProps}
-            aria-label={t('app.name')}
+            aria-label={productName}
             className="absolute inset-y-0 right-0 z-20 w-2 cursor-col-resize touch-none outline-none hover:bg-primary/15 focus-visible:bg-primary/30"
           />
           <div className="min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">
             <WorkspaceNavigation />
           </div>
           <div className="flex min-w-0 shrink-0 flex-col border-t border-border/50">
+            <ManagedStudioSource />
             <StatusBar
               footerLeading={
                 mac ? (

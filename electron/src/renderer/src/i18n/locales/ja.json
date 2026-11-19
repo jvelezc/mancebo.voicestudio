@@ -4345,5 +4345,14 @@
     "unavailable": "このアプリでは自動報告を利用できないか、無効になっています。",
     "managed": "このブラウザに接続されたデスクトップアプリで設定してください。",
     "save_failed": "この選択を保存できませんでした。もう一度お試しください。"
+  },
+  "managedStudio": {
+    "studioTitle": "音声スタジオ",
+    "sessionExpired": "スタジオのセッションが終了しました。Manceboのワークスペースから再接続してください。",
+    "unavailable": "音声スタジオを開けませんでした。もう一度試すか、Manceboに戻ってください。",
+    "openWorkspace": "Manceboのワークスペースを開く",
+    "retry": "もう一度試す",
+    "productName": "Mancebo.ai",
+    "sourceCode": "ソースコード"
   }
 }
