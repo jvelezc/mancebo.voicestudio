@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -45,6 +45,29 @@ it('retries a lock another creator is still deleting on Windows', async () => {
   const id = await localDataIdentity(directory);
   expect(id).toMatch(/^[0-9a-f-]{36}$/);
   expect(await localDataIdentity(directory)).toBe(id);
+});
+
+it('waits for a concurrent publisher through the existing Windows rename retry window', async () => {
+  const directory = join(root, 'data');
+  await mkdir(directory);
+  const info = await stat(directory, { bigint: true });
+  const path = join(directory, FILE);
+  const lock = `${path}.lock`;
+  const expected = '12345678-1234-4234-8234-123456789abc';
+  await writeFile(lock, 'another creator owns this lock');
+  const identity = localDataIdentity(directory);
+  const publish = (async () => {
+    // FILE_RENAME can legitimately retry for about 1.5 seconds on Windows;
+    // the old 500 ms identity lock budget abandoned an otherwise valid writer.
+    await new Promise(resolve => setTimeout(resolve, 1800));
+    const temporary = `${path}.published.tmp`;
+    await writeFile(temporary, JSON.stringify({ version: 1, id: expected, dev: String(info.dev), ino: String(info.ino) }));
+    await rename(temporary, path);
+    await rm(lock);
+  })();
+  const [actual] = await Promise.all([identity, publish]);
+  expect(actual).toBe(expected);
+  expect(await localDataIdentity(directory)).toBe(expected);
 });
 
 it('retries an identity file another creator is still replacing on Windows', async () => {
