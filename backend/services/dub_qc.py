@@ -18,6 +18,7 @@ pipeline stage that runs the ASR pass lives in the dub router.
 
 from __future__ import annotations
 
+import math
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -117,6 +118,48 @@ def _overlap(a0: float, a1: float, b0: float, b1: float) -> float:
     return max(0.0, min(a1, b1) - max(a0, b0))
 
 
+def _recognition_hits(dub_segments: list[dict], recognized: list[dict]) -> list[list[dict]]:
+    """Assign timed words once; retain conservative sentence matching without them.
+
+    A recognizer can group several short dub lines into a single sentence. Its
+    whole sentence is not evidence that every overlapping line said every word.
+    Use acoustic word times, never fuzzy matching against the expected text.
+    """
+    windows = [(float(seg.get("start", 0.0)), float(seg.get("end", 0.0))) for seg in dub_segments]
+    hits: list[list[dict]] = [[] for _ in windows]
+    for sentence in recognized:
+        words = sentence.get("words")
+        timed: list[dict] = []
+        if isinstance(words, list) and words:
+            for word in words:
+                try:
+                    start, end = float(word["start"]), float(word["end"])
+                    text = word["word"]
+                    if not (math.isfinite(start) and math.isfinite(end) and end >= start
+                            and isinstance(text, str) and text.strip()):
+                        break
+                    timed.append({"start": start, "end": end, "text": text})
+                except (KeyError, TypeError, ValueError, OverflowError):
+                    break
+        if isinstance(words, list) and timed and len(timed) == len(words):
+            for word in timed:
+                candidates = [(index, _overlap(start, end, word["start"], word["end"]))
+                              for index, (start, end) in enumerate(windows)]
+                candidates = [(index, overlap) for index, overlap in candidates if overlap > 0
+                              or (word["start"] == word["end"] and windows[index][0] <= word["start"] < windows[index][1])]
+                if candidates:
+                    index, _ = max(candidates, key=lambda item: (item[1], -abs(
+                        sum(windows[item[0]]) / 2 - (word["start"] + word["end"]) / 2)))
+                    hits[index].append(word)
+        else:
+            # Some engines offer sentence timing only. Preserve that evidence
+            # rather than claiming a missing/invalid word list was accurate.
+            for index, (start, end) in enumerate(windows):
+                if _overlap(start, end, float(sentence.get("start", 0.0)), float(sentence.get("end", 0.0))) > 0:
+                    hits[index].append(sentence)
+    return hits
+
+
 def score_dub(
     dub_segments: list[dict],
     recognized: list[dict],
@@ -128,16 +171,16 @@ def score_dub(
 
     ``dub_segments`` are the segments we generated (each {start, end, text});
     ``recognized`` are the ASR result segments on the dubbed audio (each
-    {start, end, text}). Each dub segment is matched to the recognized
-    segment(s) it overlaps in time; their text is concatenated as the
-    hypothesis and scored against the dub segment's ``text``. The recognized
+    {start, end, text, words?}). Timed words are assigned to the single dub line
+    they overlap most; engines without word timing retain sentence overlap.
+    Their text is concatenated as the hypothesis and scored against ``text``. The recognized
     span's bounds become the measured start/end (subtitle-timing truth).
     """
     results: list[SegmentQC] = []
+    recognition_hits = _recognition_hits(dub_segments, recognized)
     for i, seg in enumerate(dub_segments):
         sid = str(seg_ids[i]) if (seg_ids and i < len(seg_ids)) else str(seg.get("id", i))
-        s0, s1 = float(seg.get("start", 0.0)), float(seg.get("end", 0.0))
-        hits = [r for r in recognized if _overlap(s0, s1, float(r.get("start", 0.0)), float(r.get("end", 0.0))) > 0]
+        hits = recognition_hits[i]
         hyp = " ".join((r.get("text") or "").strip() for r in hits).strip()
         drift = word_error_rate(seg.get("text", ""), hyp)
         new_start = min((float(r.get("start", 0.0)) for r in hits), default=None)

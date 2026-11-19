@@ -107,3 +107,34 @@ def test_idless_segments_use_index_keys(qc_env):
         del seg["id"]
     job["segments_i18n"]["es"] = {"0": "hola mundo", "1": "muchas gracias"}
     assert _qc(qc_env, "es")["flagged_count"] == 0
+
+
+def test_qc_supplies_the_selected_language_and_requests_word_times(qc_env, monkeypatch):
+    from services import asr_backend
+
+    calls = []
+
+    class Backend:
+        id = "language-aware-asr"
+
+        def transcribe(self, path, *, word_timestamps=True, language=None):
+            calls.append((os.path.basename(path), word_timestamps, language))
+            return {"segments": []}
+
+    monkeypatch.setattr(asr_backend, "load_active_asr_backend", Backend)
+    _qc(qc_env, "es")
+    assert calls == [("dubbed_es.wav", True, "es")]
+
+
+def test_qc_does_not_send_unsupported_language_to_a_legacy_backend(qc_env, monkeypatch):
+    from services import asr_backend
+
+    class Backend:
+        id = "legacy-asr"
+
+        def transcribe(self, path, *, word_timestamps=True):
+            assert word_timestamps is True
+            return {"segments": []}
+
+    monkeypatch.setattr(asr_backend, "load_active_asr_backend", Backend)
+    assert _qc(qc_env, "es")["engine"] == "legacy-asr"

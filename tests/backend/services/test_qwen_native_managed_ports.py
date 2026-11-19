@@ -130,3 +130,29 @@ def test_managed_handoff_waits_for_active_generation(monkeypatch):
         assert a.result(timeout=5) == "first"
         assert b.result(timeout=5) == "second"
     assert order == ["first", "second"]
+
+
+def test_managed_recovery_proof_tracks_exact_runtime_and_model_artifacts(monkeypatch, tmp_path):
+    model, binary = tmp_path / "model.gguf", tmp_path / "server"
+    model.write_bytes(b"synthetic immutable model")
+    binary.write_bytes(b"synthetic reviewed native binary")
+    monkeypatch.setattr(audiocpp.bootstrap, "resolve_server_binary", lambda: binary)
+    monkeypatch.setattr(audiocpp.bootstrap, "resolve_model_file", lambda package: model)
+    monkeypatch.setenv("VOICESTUDIO_QWEN_NATIVE_DYNAMIC_PORT", "1")
+    backend = QwenNativeBackend()
+    first = backend.resume_proof()
+    assert first["model"]["sha256"] != first["runtime"]["sha256"]
+    assert QwenNativeBackend().resume_proof() == first
+    backend._proc = SimpleNamespace(poll=lambda: None)
+    assert backend.resume_proof() is None  # No proof of what this live process loaded.
+    backend._resume_loaded_proof = first
+    assert backend.resume_proof() == first
+    model.write_bytes(b"changed model at the same operator path")
+    assert backend.resume_proof() is None
+    backend._proc = None
+    second = backend.resume_proof()
+    assert second["model"]["sha256"] != first["model"]["sha256"]
+    binary.write_bytes(b"changed runtime")
+    assert backend.resume_proof()["runtime"]["sha256"] != second["runtime"]["sha256"]
+    monkeypatch.delenv("VOICESTUDIO_QWEN_NATIVE_DYNAMIC_PORT")
+    assert backend.resume_proof() is None

@@ -84,11 +84,11 @@ class FitParams:
     audio_only_rate_cap: float = MAX_AUDIO_RATE_HARD
 
 
-def natural_pacing_params() -> FitParams:
+def natural_pacing_params(*, allow_video_retime: bool = False) -> FitParams:
     """Preserve source pauses and video timing; flag lines needing a rewrite."""
     return FitParams(
-        max_audio_only_rate=1.1, audio_rate_cap=1.1, video_slow_cap=1.0,
-        gap_guard_s=0.0, allow_video_retime=False, min_audio_rate=1.0,
+        max_audio_only_rate=1.1, audio_rate_cap=1.1, video_slow_cap=2.5 if allow_video_retime else 1.0,
+        gap_guard_s=0.0, allow_video_retime=allow_video_retime, min_audio_rate=1.0,
         preserve_pauses=True, audio_only_rate_cap=1.1,
     )
 

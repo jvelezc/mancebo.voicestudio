@@ -46,17 +46,34 @@ def background_ready(source_duration: float, background: dict | None, separation
 
 
 def natural_pacing_ready(parameters: dict, fitted_segments: list[dict]) -> bool:
-    return bool(
+    allow_retime = parameters.get("allow_video_retime") is True
+    valid = bool(
         parameters.get("preserve_pauses") is True
-        and parameters.get("allow_video_retime") is False
+        and type(parameters.get("allow_video_retime")) is bool
         and 1 <= parameters.get("audio_only_rate_cap", 99) <= 1.1
         and fitted_segments
         and all(
             1 <= line.get("audio_rate", 1) <= 1.100001
-            and line.get("video_ratio", 1) == 1
+            and 1 <= line.get("video_ratio", 1) <= (parameters.get("video_slow_cap", 1) if allow_retime else 1)
             and line.get("overflow_s", 0) <= 0.000001
-            and abs(line.get("start", -99) - line.get("source_start", 99)) <= 0.0001
-            and line.get("end", 1e9) <= line.get("source_end", -1) + 0.0001
+            and line.get("start", -1) >= line.get("source_start", 1e9) - 0.0001
+            and line.get("end", -1) >= line.get("start", 1e9)
             for line in fitted_segments
         )
     )
+    if not valid:
+        return False
+    previous = None
+    for line in fitted_segments:
+        if previous is None:
+            if abs(line["start"] - line["source_start"]) > .0001:
+                return False
+        elif line["source_start"] >= previous["source_end"]:
+            source_gap = line["source_start"] - previous["source_end"]
+            output_gap = line["start"] - previous["end"]
+            if abs(output_gap - source_gap) > .0002:
+                return False
+        if not allow_retime and (abs(line["start"] - line["source_start"]) > .0001 or line["end"] > line["source_end"] + .0001):
+            return False
+        previous = line
+    return True

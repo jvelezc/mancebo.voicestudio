@@ -95,9 +95,12 @@ estimate requiring review, particularly for overlapping or very short speech.
 ## Managed delivery checks
 
 `VOICESTUDIO_DUB_NATURAL_PACING=1` opts the managed worker into source-pause
-preservation, no video retiming and at most 10% speech acceleration. An overlong
-translation fails instead of publishing clipped speech or consuming the next
-pause. Review and shorten the wording, then regenerate the changed lines.
+preservation and at most 10% speech acceleration. Fixed-length requests retain
+the original video timeline: an overlong translation needs shorter reviewed
+wording, rather than clipped speech or consumption of the next pause. An explicit
+`timing_strategy="stretch_video"` request allows the video to run longer while
+preserving sentence gaps and natural delivery. The selected output timeline,
+including its complete tail, must match the rendered narration and final video.
 Standalone fitting defaults and existing default cache fingerprints are unchanged.
 
 Install the reviewed Demucs `htdemucs` model before customer execution and set
@@ -117,6 +120,17 @@ policy, rushed/overflowing lines, missing narration and incomplete duration.
 Its audio and video exports explicitly preserve the background bed. Listening
 review and the optional second-pass ASR QC remain separate from these structural
 checks; they do not certify pronunciation, emotion or clinical correctness.
+
+Managed Qwen renders can retain finished synthesis segments in the native private
+resume journal. Reuse requires the same complete synthesis input, reference
+audio hash, runtime binary hash and exact model hash. A live process whose
+loaded-artifact proof differs from disk cannot contribute reusable speech.
+Changed models, binaries or text invalidate the affected recovery entry;
+unproven engines continue to render conservatively without journal reuse.
+Generated edge padding is removed before planning and again consistently at mix
+time; pauses inside a spoken phrase are retained. Timing failures identify the
+affected segment IDs and measured natural/available duration for review, rather
+than asking the assistant to speed up the whole recording.
 
 ## Managed translation with read-only models
 

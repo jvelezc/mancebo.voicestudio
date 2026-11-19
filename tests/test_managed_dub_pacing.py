@@ -65,3 +65,26 @@ def test_pause_and_rate_policy_invalidate_fit_cache_without_invalidating_default
     assert fit_fingerprint({"preserve_pauses": False, "audio_only_rate_cap": 1.8}) == original
     assert fit_fingerprint({"preserve_pauses": True}) != original
     assert fit_fingerprint({"audio_only_rate_cap": 1.1}) != original
+
+
+def test_natural_delivery_can_extend_video_without_rushing_speech_or_shortening_pauses():
+    from services.fit_planner import natural_pacing_params
+    plan = plan_fit([{"id": "first", "start": 1, "end": 2}, {"id": "next", "start": 4, "end": 5}], [2, 1], 8,
+                    natural_pacing_params(allow_video_retime=True))
+    first, following = plan.segments
+    assert first.audio_rate <= 1.1
+    assert first.overflow_s == 0
+    assert following.new_start - first.new_end == 2
+    assert plan.total_duration - following.new_end == pytest.approx(3, abs=.0002)
+    assert plan.total_duration > 8
+
+
+def test_managed_video_extension_is_an_explicit_request(monkeypatch):
+    from api.routers.dub_generate import _managed_pacing_request
+    from schemas.requests import DubRequest
+    monkeypatch.setenv("VOICESTUDIO_DUB_NATURAL_PACING", "1")
+    request = DubRequest(segments=[{"start": 0, "end": 2, "text": "Hola"}], timing_strategy="stretch_video")
+    managed = _managed_pacing_request(request)
+    assert managed.timing_strategy == "smart_fit"
+    assert managed.fit_options.allow_video_retime is True
+    assert managed.fit_options.audio_rate_cap == 1.1

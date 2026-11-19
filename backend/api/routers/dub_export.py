@@ -1762,9 +1762,11 @@ def dub_delivery_quality(job_id: str, lang: str | None = Query(None)) -> dict:
                 raise HTTPException(status_code=409, detail={"code": "dub_track_missing"})
             speech = measure_audio(_dub_artifact(track.get("path"), job_id))
             plan = (job.get("fit_plans") or {}).get(lang) or {}
+            output_duration = float(plan.get("total_duration") or duration)
+            result["render_duration_seconds"] = output_duration
             result["speech"] = speech
             result["pacing_ready"] = natural_pacing_ready(plan.get("params") or {}, plan.get("delivery_segments") or [])
-            result["duration_ready"] = abs(speech["duration_seconds"] - duration) <= 0.1
+            result["duration_ready"] = abs(speech["duration_seconds"] - output_duration) <= 0.1 and output_duration >= duration - 0.1
         return result
     except (OSError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=409, detail={"code": "dub_quality_unreadable"}) from exc
@@ -1826,9 +1828,10 @@ async def dub_qc_pass(job_id: str, lang: str = Query(None), drift_threshold: flo
         # `load_*`, not `get_*`: the plain selector returns engines whose
         # shallow probe passed but whose deep import chain is broken, which
         # then 500s at `.transcribe()`. The loader degrades (#1185).
-        from services.asr_backend import load_active_asr_backend
+        from services.asr_backend import load_active_asr_backend, transcribe_request_kwargs
         backend = load_active_asr_backend()
-        result = backend.transcribe(wav_path, word_timestamps=False)
+        options = transcribe_request_kwargs(backend, {"language": track_lang})
+        result = backend.transcribe(wav_path, word_timestamps=True, **options)
         return result.get("segments", []), backend.id
 
     try:
